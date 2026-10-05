@@ -1,0 +1,1335 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concluir pedido · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --bg-light:#f8f8f8;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:0;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Divider Section — separador entre blocos =====
+     Estrutura real do Figma: duas peças brancas de 6px com 4px de GAP entre
+     elas (não coladas) — é esse gap que deixa o fundo cinza do container
+     visível como uma linha sólida de ~4px; a versão anterior (::before/::after
+     encostados, sem gap) cobria o cinza por completo e a linha sumia. */
+  .divider-section{
+    height:16px;
+    background:var(--gray-line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .divider-section .piece{
+    height:6px;
+    background:var(--white);
+  }
+  .divider-section .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .divider-section .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+
+  /* ===== Toast simples (ações ainda sem tela final) ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:100px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:30;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+
+  .app-bar .close-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .app-bar{justify-content:space-between;}
+  .app-bar .title{flex:1;min-width:0;display:flex;align-items:center;gap:16px;}
+  .app-bar h1{flex:1;min-width:0;}
+
+  .hero{padding:32px 16px;display:flex;flex-direction:column;gap:12px;}
+  .hero i{color:var(--red);}
+  .hero h2{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:20px;line-height:1.3;}
+
+  /* ===== Etapas (one page) ===== */
+  .step{padding:32px 0;}
+  .step-head{display:flex;align-items:center;gap:8px;min-height:28px;padding:0 16px;}
+  .step-head .name{flex:1;margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+  .step.is-locked .name{color:var(--gray-line);}
+  .step-body{padding:24px 16px 0;display:flex;flex-direction:column;gap:24px;}
+  .step.is-done .step-body{padding-bottom:0;}
+  .step-done-badge{width:28px;height:28px;border-radius:var(--radius-pill);background:var(--green-bg);color:var(--green-text);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .step-done-badge i{font-size:24px;}
+  .intro{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+
+  /* Inputs Mondrian */
+  .mdn-Input{width:100%;position:relative;}
+  .mdn-Input.is-readonly{opacity:.32;pointer-events:none;}
+  .mdn-Input .ok-icon{position:absolute;right:17px;top:11px;color:var(--green-text);pointer-events:none;display:none;}
+  .mdn-Input.is-valid .ok-icon{display:block;}
+  .field-error{margin:4px 0 0;font-size:12px;line-height:1.3;color:var(--red);}
+  .checkbox-row{display:flex;align-items:center;}
+
+  .btn-primary{
+    width:100%;height:48px;border-radius:var(--radius-pill);background:var(--red);color:var(--white);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:500;font-size:16px;transition:filter .2s cubic-bezier(0.2,0,0,1), opacity .2s;
+  }
+  .btn-primary:disabled{opacity:.32;cursor:not-allowed;}
+  @media (hover:hover){.btn-primary:not(:disabled):hover{filter:brightness(0.9);}}
+  .btn-primary:not(:disabled):active{transform:scale(0.99);}
+
+  /* Resumo editável da etapa concluída */
+  .summary{background:var(--bg-light);border-radius:var(--radius-sm);padding:24px;display:flex;gap:24px;align-items:flex-start;}
+  .summary .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.3;}
+  .summary .tx .n{margin:0;font-weight:500;color:var(--ink);}
+  .summary .tx .l{color:var(--gray-dark);}
+  .summary .tx .l p{margin:0;overflow-wrap:anywhere;}
+  .summary .edit{flex-shrink:0;color:var(--ink);display:flex;}
+
+  /* V2: resumo dos dados pessoais com rótulo em negrito em cada dado (margens de 16px do Figma) */
+  #stepDados.com-labels .step-head{padding:0 16px;}
+  #stepDados.com-labels .step-body{padding-left:16px;padding-right:16px;}
+  #stepDados.com-labels .summary{padding:16px;gap:16px;}
+  #stepDados.com-labels .summary .tx{padding:4px;gap:8px;}
+  #stepDados.com-labels .summary .tx .l{display:flex;flex-direction:column;gap:8px;}
+  .summary .tx .l .item p{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .summary .tx .l .item .lb{font-weight:700;}
+  .summary .tx .l .item .vl{font-weight:400;}
+  .toast{bottom:32px;}
+
+  /* ===== Etapa: confirme seu endereço ===== */
+  #stepEndereco.is-active{padding-bottom:0;}
+  .end-body{margin-top:24px;}
+  .end-row{padding:32px 16px;display:flex;flex-direction:column;gap:16px;}
+  .end-row .linha{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);overflow-wrap:anywhere;}
+  .end-row .ref{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .divider{height:1px;background:var(--gray-line);}
+  .end-actions{padding:32px 16px;}
+
+  /* ===== Bottom sheet "Confirmar endereço" ===== */
+  .sheet-backdrop{
+    position:absolute;inset:0;z-index:40;background:rgba(31,29,29,0.48);
+    opacity:0;visibility:hidden;transition:opacity .3s ease, visibility 0s linear .3s;
+  }
+  .sheet-backdrop.is-open{opacity:1;visibility:visible;transition:opacity .3s ease, visibility 0s;}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:41;background:var(--white);
+    border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:32px 16px;
+    display:flex;flex-direction:column;align-items:center;
+    transform:translateY(100%);visibility:hidden;
+    transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s linear .35s;
+  }
+  .sheet.is-open{transform:translateY(0);visibility:visible;transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s;}
+  .sheet .bar{width:28px;height:3px;border-radius:100px;background:var(--ink);margin-bottom:7px;}
+  .sheet .content{width:100%;display:flex;flex-direction:column;gap:24px;}
+  .sheet .alert{padding-top:8px;color:var(--red);display:flex;}
+  .sheet .alert i{font-size:32px;}
+  .sheet h3{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:28px;line-height:1.3;}
+  .sheet .txt{font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .sheet .txt p{margin:0;}
+  .sheet .txt p + p{margin-top:16px;}
+  .sheet .txt b{font-weight:700;overflow-wrap:anywhere;}
+  .sheet .btns{display:flex;flex-direction:column;gap:16px;}
+  .btn-sm{height:40px;padding:8px 24px;border-radius:var(--radius-pill);width:100%;display:flex;align-items:center;justify-content:center;font-weight:500;font-size:16px;line-height:1.3;transition:filter .2s cubic-bezier(0.2,0,0,1);}
+  .btn-sm.primary{background:var(--red);color:var(--white);}
+  .btn-sm.secondary{border:1px solid var(--red);color:var(--red);background:var(--white);}
+  @media (hover:hover){.btn-sm.primary:hover{filter:brightness(0.9);}.btn-sm.secondary:hover{background:#fff5f4;}}
+
+  /* Etapa endereço confirmada: card resumo (igual ao dos dados pessoais) */
+  .end-card{padding:0 16px;}
+  .summary .tx .rf{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  #stepEndereco.is-done{padding:24px 0;}
+
+  /* ===== Etapa: agende sua instalação ===== */
+  .inst-body{margin-top:24px;display:flex;flex-direction:column;}
+  .inst-body .intro{padding:0 16px 8px;}
+  .periodo{display:flex;align-items:flex-start;gap:16px;padding:32px 16px;cursor:pointer;}
+  .periodo .infos{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
+  .periodo .nome{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .periodo .hora{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .periodo .mdn-Radio{flex-shrink:0;}
+  .datas-sec{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .datas-sec .lbl{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .datas{display:flex;gap:8px;margin:0 -16px;padding:0 16px;overflow-x:auto;scrollbar-width:none;cursor:grab;-webkit-overflow-scrolling:touch;}
+  .datas::-webkit-scrollbar{display:none;}
+  .datas.is-dragging{cursor:grabbing;user-select:none;}
+  .data-card{
+    flex:0 0 88px;height:100px;border:1px solid var(--gray-line);border-radius:8px;background:var(--white);
+    padding:24px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-weight:500;font-size:20px;line-height:1.3;color:var(--ink);text-align:center;
+    transition:background .15s, border-color .15s, color .15s;
+  }
+  .data-card.is-selected{background:var(--red);border-color:var(--red);color:var(--white);}
+  .inst-resumo .summary .tx .n{font-size:16px;}
+  #stepInstalacao.is-done{padding:32px 0;}
+  #stepInstalacao.m16:not(.is-done) .step-head{padding:0 16px;}
+
+  /* ===== Etapa: formas de pagamento ===== */
+  .pag-body{margin-top:24px;}
+  .forma{padding:32px 16px;display:flex;flex-direction:column;gap:16px;cursor:pointer;}
+  .forma .main{display:flex;align-items:flex-start;gap:16px;}
+  .forma .main > i{font-size:24px;color:var(--ink);flex-shrink:0;}
+  .forma .infos{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .forma .nome{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .forma .desc{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .forma .mdn-Radio{flex-shrink:0;}
+  .debito-campos{display:flex;flex-direction:column;gap:16px;cursor:default;}
+  .debito-campos .link{align-self:flex-start;font-weight:500;font-size:16px;line-height:1.3;color:#005c66;text-decoration:underline;text-align:left;}
+  /* Seletor de banco: nome longo é cortado com "..." e nunca quebra linha */
+  .mdn-Input select.mdn-Input-field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:48px;}
+  .band{height:16px;background:var(--gray-line);display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+  .band .piece{height:6px;background:var(--white);}
+  .band .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .band .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+  .pag-sec{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .pag-sec .lbl{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .opcao{display:flex;align-items:center;gap:16px;padding:32px 16px;cursor:pointer;margin:0 -16px;}
+  .opcao .ic{width:32px;height:32px;flex-shrink:0;border-radius:var(--radius-pill);background:var(--bg-light);display:flex;align-items:center;justify-content:center;color:var(--ink);}
+  .opcao .ic i{font-size:16px;}
+  .opcao .infos{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .opcao .nome{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .opcao .desc{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .opcao .desc b{font-weight:700;}
+  .opcao .mdn-Radio{flex-shrink:0;}
+  .venc{display:flex;gap:12px;margin:0 -16px;padding:0 16px;overflow-x:auto;scrollbar-width:none;cursor:grab;}
+  .venc::-webkit-scrollbar{display:none;}
+  .venc.is-dragging{cursor:grabbing;user-select:none;}
+  .venc-card{
+    flex:0 0 76px;border:1px solid var(--gray-line);border-radius:var(--radius-xs);background:var(--white);
+    padding:16px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;color:var(--ink);
+    transition:background .15s, border-color .15s, color .15s;
+  }
+  .venc-card .d{font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .venc-card .n{font-weight:700;font-size:20px;line-height:1.3;}
+  .venc-card.is-selected{background:var(--red);border-color:var(--red);}
+  .venc-card.is-selected .d,.venc-card.is-selected .n{color:var(--white);}
+  .pag-cta{padding:32px 16px;}
+
+  /* ===== Modal "Não encontrou seu banco?" (tela cheia, sobe de baixo) ===== */
+  .full-modal{
+    position:absolute;inset:0;z-index:45;background:var(--white);display:flex;flex-direction:column;
+    transform:translateY(100%);visibility:hidden;
+    transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s linear .35s;
+  }
+  .full-modal.is-open{transform:translateY(0);visibility:visible;transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s;}
+  .full-modal .app-bar{position:static;}
+  .full-modal .body{flex:1;min-height:0;overflow-y:auto;}
+  .full-modal .conteudo{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .full-modal .alert{padding-top:8px;color:var(--red);display:flex;}
+  .full-modal .alert i{font-size:24px;}
+  .full-modal h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:28px;line-height:1.3;}
+  .full-modal .txt p{margin:0 0 16px;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .full-modal .txt p.passo{font-weight:700;margin-bottom:16px;}
+  .full-modal .txt b{font-weight:700;}
+
+  /* ===== Pagamento concluído: cards resumo ===== */
+  #stepPagamento.is-done{padding:32px 0;}
+  .pag-resumo{margin-top:24px;padding:0 16px;display:flex;flex-direction:column;gap:24px;}
+  .summary .tx .sub{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);overflow-wrap:anywhere;}
+  .summary .tx .nota{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--ink);}
+  .faturas{display:flex;flex-direction:column;gap:8px;}
+  .faturas .t{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .faturas .d{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .faturas .lin{display:flex;justify-content:space-between;gap:16px;font-size:16px;line-height:1.5;white-space:nowrap;}
+  .faturas .lin span:first-child{color:var(--gray-dark);}
+  .faturas .lin span:last-child{color:var(--ink);text-align:right;}
+  .faturas .rodape{margin:0;font-size:12px;line-height:1.5;color:var(--gray-dark);}
+  .aviso{background:var(--warn-bg);border:1px solid var(--warn-text);border-radius:var(--radius-sm);padding:16px;display:flex;gap:8px;align-items:flex-start;color:var(--warn-text);}
+  .aviso i{font-size:16px;flex-shrink:0;margin-top:2px;}
+  .aviso p{margin:0;font-size:16px;line-height:1.3;}
+  .aviso p:first-child{font-weight:500;}
+
+  /* ===== Termos + Finalizar pedido ===== */
+  .termos{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .termos .mdn-Checkbox-text{font-size:16px;line-height:1.3;color:var(--ink);}
+  .termos .termo-link{color:#005c66;}
+  .termos .termo-link b{font-weight:500;text-decoration:underline;}
+  .btn-sale{
+    width:100%;padding:16px 32px;border-radius:var(--radius-pill);background:#ffc722;
+    font-weight:500;font-size:16px;line-height:1;color:var(--ink);text-align:center;
+    transition:filter .2s cubic-bezier(0.2,0,0,1), opacity .2s;
+  }
+  .btn-sale:disabled{opacity:.32;cursor:not-allowed;}
+  @media (hover:hover){.btn-sale:not(:disabled):hover{filter:brightness(0.95);}}
+  .btn-sale:not(:disabled):active{transform:scale(0.99);}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea">
+    <div class="app-bar">
+      <div class="title">
+        <button type="button" class="back-btn" id="backBtn" aria-label="Voltar">
+          <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+        <h1>Concluir pedido</h1>
+      </div>
+      <button type="button" class="close-btn" id="closeBtn" aria-label="Fechar">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="hero">
+      <i class="mdn-Icon-claro mdn-Icon--md" aria-hidden="true"></i>
+      <h2>Falta pouco para concluir seu pedido!</h2>
+    </div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <!-- ETAPA 1: dados pessoais -->
+    <section class="step" id="stepDados">
+      <div class="step-head">
+        <p class="name">Dados pessoais</p>
+        <span class="step-done-badge" id="dadosBadge" hidden><i class="mdn-Icon-check-circulo" aria-hidden="true"></i></span>
+      </div>
+
+      <form class="step-body" id="dadosForm" novalidate autocomplete="off">
+        <p class="intro">Preencha os dados como estão informados em seus documentos.</p>
+
+        <div class="mdn-Input is-readonly">
+          <input class="mdn-Input-field" id="cpf" type="text" value="" disabled>
+          <label for="cpf" class="mdn-Input-label">CPF</label>
+        </div>
+
+        <div>
+          <div class="mdn-Input" data-field="nome">
+            <input class="mdn-Input-field" id="nome" type="text" value="" autocomplete="off">
+            <label for="nome" class="mdn-Input-label">Nome Completo</label>
+            <span class="ok-icon mdn-Icon-check mdn-Icon--md" aria-hidden="true"></span>
+          </div>
+          <p class="field-error" data-error="nome" hidden></p>
+        </div>
+
+        <div>
+          <div class="mdn-Input" data-field="email">
+            <input class="mdn-Input-field" id="email" type="email" value="" inputmode="email" autocomplete="off">
+            <label for="email" class="mdn-Input-label">E-mail</label>
+          </div>
+          <p class="field-error" data-error="email" hidden></p>
+        </div>
+
+        <div class="mdn-Input is-readonly">
+          <input class="mdn-Input-field" id="celular" type="text" value="" disabled>
+          <label for="celular" class="mdn-Input-label">Celular</label>
+        </div>
+
+        <div id="blocoRg">
+          <div class="mdn-Input" data-field="rg">
+            <input class="mdn-Input-field" id="rg" type="text" value="" autocomplete="off">
+            <label for="rg" class="mdn-Input-label">RG</label>
+          </div>
+          <p class="field-error" data-error="rg" hidden></p>
+        </div>
+
+        <div class="checkbox-row" id="blocoSemRg">
+          <div tabindex="0" aria-label="checkbox" class="mdn-Checkbox mdn-Checkbox--default" id="semRgCheckbox">
+            <input class="mdn-Checkbox-input" type="checkbox">
+            <label class="mdn-Checkbox-label"></label>
+            <label class="mdn-Checkbox-text">Não possuo número de RG (CIN)</label>
+          </div>
+        </div>
+
+        <div>
+          <div class="mdn-Input" data-field="nascimento">
+            <input class="mdn-Input-field" id="nascimento" type="text" value="" inputmode="numeric" maxlength="10" autocomplete="off">
+            <label for="nascimento" class="mdn-Input-label">Data de Nascimento</label>
+            <span class="ok-icon mdn-Icon-check mdn-Icon--md" aria-hidden="true"></span>
+          </div>
+          <p class="field-error" data-error="nascimento" hidden></p>
+        </div>
+
+        <div id="blocoMae">
+          <div class="mdn-Input" data-field="mae">
+            <input class="mdn-Input-field" id="mae" type="text" value="" autocomplete="off">
+            <label for="mae" class="mdn-Input-label">Nome completo da sua mãe</label>
+          </div>
+          <p class="field-error" data-error="mae" hidden></p>
+        </div>
+
+        <button type="submit" class="btn-primary" id="dadosContinuar" disabled>Continuar</button>
+      </form>
+
+      <div class="step-body" id="dadosResumo" hidden>
+        <div class="summary">
+          <div class="tx">
+            <p class="n" id="sNome"></p>
+            <div class="l" id="sLinhas"></div>
+          </div>
+          <button type="button" class="edit" id="dadosEditar" aria-label="Editar dados pessoais">
+            <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+    <section class="step is-locked" id="stepEndereco">
+      <div class="step-head">
+        <p class="name">Confirme seu endereço</p>
+        <span class="step-done-badge" id="endBadge" hidden><i class="mdn-Icon-check-circulo" aria-hidden="true"></i></span>
+      </div>
+      <div class="end-body" id="endBody" hidden>
+        <div class="end-row">
+          <p class="linha" id="endLinha"></p>
+          <p class="ref" id="endRef" hidden></p>
+          <p class="ref" id="endComp" hidden></p>
+        </div>
+        <div class="end-card" id="endResumo" hidden>
+          <div class="summary">
+            <div class="tx">
+              <p class="n" id="endResLinha"></p>
+              <p class="rf" id="endResRef" hidden></p>
+              <p class="rf" id="endResComp" hidden></p>
+            </div>
+            <button type="button" class="edit" id="endEditar" aria-label="Editar endereço">
+              <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div id="endAcao">
+          <div class="divider"></div>
+          <div class="end-actions"><button type="button" class="btn-primary" id="endContinuar">Continuar</button></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+    <section class="step is-locked" id="stepInstalacao">
+      <div class="step-head">
+        <p class="name">Agende sua instalação</p>
+        <span class="step-done-badge" id="instBadge" hidden><i class="mdn-Icon-check-circulo" aria-hidden="true"></i></span>
+      </div>
+      <div class="inst-body" id="instBody" hidden>
+        <p class="intro">Escolha o período e a data da visita técnica para instalação:</p>
+        <div id="periodos"></div>
+        <div class="divider"></div>
+        <div class="datas-sec">
+          <p class="lbl">Escolha uma data de instalação</p>
+          <div class="datas" id="datas" role="radiogroup" aria-label="Datas disponíveis"></div>
+          <button type="button" class="btn-primary" id="instContinuar" disabled>Continuar</button>
+        </div>
+      </div>
+      <div class="end-card" id="instResumo" hidden style="margin-top:24px">
+        <div class="summary">
+          <div class="tx">
+            <p class="n" id="instResPeriodo"></p>
+            <div class="l" id="instResData"></div>
+          </div>
+          <button type="button" class="edit" id="instEditar" aria-label="Editar agendamento">
+            <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+    <section class="step is-locked" id="stepPagamento">
+      <div class="step-head">
+        <p class="name">Formas de pagamento</p>
+        <span class="step-done-badge" id="pagBadge" hidden><i class="mdn-Icon-check-circulo" aria-hidden="true"></i></span>
+      </div>
+      <div class="pag-resumo" id="pagResumo" hidden></div>
+      <div class="pag-body" id="pagBody" hidden>
+
+        <div class="forma" id="formaDebito" data-forma="debito">
+          <div class="main">
+            <i class="mdn-Icon-carteira mdn-Icon--md" aria-hidden="true"></i>
+            <div class="infos"><p class="nome">Débito em conta</p><p class="desc desc-forma">Sem desconto nesta forma de pagamento</p></div>
+            <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Selecionar débito em conta">
+              <input type="radio" class="mdn-Radio-input" name="forma" role="radio" value="debito">
+              <label class="mdn-Radio-label"></label>
+            </div>
+          </div>
+          <div class="debito-campos" id="debitoCampos" hidden>
+            <div class="mdn-Input">
+              <select id="banco" class="mdn-Input-field" data-mdn-type="select" style="background-image:none">
+                <option value="" selected hidden></option>
+              </select>
+              <span class="mdn-Icon-baixo mdn-Icon--md mdn-Input-select-arrow" aria-hidden="true"></span>
+              <label for="banco" class="mdn-Input-label">Banco</label>
+            </div>
+            <div class="mdn-Input">
+              <input class="mdn-Input-field" id="agencia" type="text" inputmode="numeric" maxlength="5" autocomplete="off">
+              <label for="agencia" class="mdn-Input-label">Agência (sem dígito)</label>
+            </div>
+            <div class="mdn-Input">
+              <input class="mdn-Input-field" id="conta" type="text" inputmode="numeric" maxlength="12" autocomplete="off">
+              <label for="conta" class="mdn-Input-label">Conta corrente (sem dígito)</label>
+            </div>
+            <div class="mdn-Input">
+              <input class="mdn-Input-field" id="digito" type="text" maxlength="2" autocomplete="off">
+              <label for="digito" class="mdn-Input-label">Dígito</label>
+            </div>
+            <button type="button" class="link" id="bancoNaoEncontrado">Não encontrou seu banco?</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="forma" id="formaBoleto" data-forma="boleto">
+          <div class="main">
+            <i class="mdn-Icon-codigo-de-barras mdn-Icon--md" aria-hidden="true"></i>
+            <div class="infos"><p class="nome">Boleto</p><p class="desc desc-forma">Sem desconto nesta forma de pagamento</p></div>
+            <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Selecionar boleto">
+              <input type="radio" class="mdn-Radio-input" name="forma" role="radio" value="boleto" checked>
+              <label class="mdn-Radio-label"></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="band"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+        <div class="pag-sec" style="padding-bottom:0">
+          <p class="lbl">Como você quer receber sua fatura?</p>
+          <div>
+            <div class="opcao" data-fatura="email">
+              <span class="ic"><i class="mdn-Icon-arroba" aria-hidden="true"></i></span>
+              <div class="infos"><p class="nome">E-mail</p><p class="desc">Mais ecológico</p></div>
+              <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Receber por e-mail">
+                <input type="radio" class="mdn-Radio-input" name="fatura" role="radio" value="email" checked>
+                <label class="mdn-Radio-label"></label>
+              </div>
+            </div>
+            <div class="divider" style="margin:0 -16px"></div>
+            <div class="opcao" data-fatura="correios">
+              <span class="ic"><i class="mdn-Icon-e-mail" aria-hidden="true"></i></span>
+              <div class="infos"><p class="nome">Correios</p><p class="desc">Menos ecológico e <b>sem descontos nesta forma</b></p></div>
+              <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Receber pelos Correios">
+                <input type="radio" class="mdn-Radio-input" name="fatura" role="radio" value="correios">
+                <label class="mdn-Radio-label"></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="band"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+        <div class="pag-sec">
+          <p class="lbl">Data de vencimento da fatura</p>
+          <div class="venc" id="venc" role="radiogroup" aria-label="Dia de vencimento"></div>
+        </div>
+        <div class="band"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+        <div class="pag-cta"><button type="button" class="btn-primary" id="pagContinuar">Continuar</button></div>
+      </div>
+    </section>
+
+    <div id="termosWrap" hidden>
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+      <section class="termos">
+        <div tabindex="0" aria-label="checkbox" class="mdn-Checkbox mdn-Checkbox--default" id="termosCheckbox">
+          <input class="mdn-Checkbox-input" type="checkbox">
+          <label class="mdn-Checkbox-label"></label>
+          <label class="mdn-Checkbox-text">Declaro que li e estou de acordo com o termo de adesão contido em <span class="termo-link" id="termoLink">(<b>Termo de condições</b>)</span>.</label>
+        </div>
+        <button type="button" class="btn-sale" id="finalizarBtn" disabled>Finalizar pedido</button>
+      </section>
+    </div>
+  </div>
+
+  <div class="full-modal" id="bancoModal" aria-hidden="true">
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+    <div class="app-bar">
+      <div class="title">
+        <button type="button" class="back-btn" id="bancoVoltar" aria-label="Voltar">
+          <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+        <h1>Não encontrou seu banco?</h1>
+      </div>
+      <button type="button" class="close-btn" id="bancoFechar" aria-label="Fechar">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="body">
+      <div class="conteudo">
+        <span class="alert"><i class="mdn-Icon-circulo-exclamacao" aria-hidden="true"></i></span>
+        <h2>Atenção</h2>
+        <div class="txt">
+          <p>Para os bancos <b>C6, Inter, Nubank, Original, PicPay e PagSeguro,</b> o débito automático deve ser solicitado diretamente no aplicativo ou atendimento do seu banco.</p>
+          <p>Siga os passos abaixo:</p>
+          <p class="passo">1º passo</p>
+          <p>Finalize seu pedido escolhendo a opção de boleto.</p>
+          <p class="passo">2º passo</p>
+          <p>Ative o débito automático pelo aplicativo ou no atendimento do seu banco.</p>
+          <p class="passo">3º passo</p>
+          <p>Após a ativação, o <b>desconto será aplicado automaticamente na sua fatura.</b></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitulo" aria-hidden="true">
+    <div class="bar"></div>
+    <div class="content">
+      <span class="alert"><i class="mdn-Icon-circulo-exclamacao mdn-Icon--lg" aria-hidden="true"></i></span>
+      <h3 id="sheetTitulo">Confirmar endereço</h3>
+      <div class="txt">
+        <p>O endereço de instalação está correto?</p>
+        <p><b id="sheetLinha"></b></p>
+        <p id="sheetRef" hidden></p>
+      </div>
+      <div class="btns">
+        <button type="button" class="btn-sm primary" id="sheetSim">Sim</button>
+        <button type="button" class="btn-sm secondary" id="sheetAlterar">Alterar endereço</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const $ = (id) => document.getElementById(id);
+  const produtoId = new URLSearchParams(location.search).get('produto');
+  const cliente = catalog.cliente || {};
+
+  // ===== Valores pré-preenchidos (aba "Cliente" da planilha) =====
+  // Campos que chegam preenchidos precisam do label já "flutuando": o JS do
+  // Mondrian só faz isso em eventos de digitação, então marcamos à mão.
+  const campos = {
+    cpf: $('cpf'), nome: $('nome'), email: $('email'), celular: $('celular'),
+    rg: $('rg'), nascimento: $('nascimento'), mae: $('mae'),
+  };
+  const semRg = $('semRgCheckbox').querySelector('.mdn-Checkbox-input');
+  campos.cpf.value = cliente.cpf || '';
+  campos.nome.value = cliente.nome || '';
+  campos.celular.value = cliente.celular || '';
+  campos.nascimento.value = cliente.nascimento || '';
+
+  function ativarLabel(input) {
+    input.closest('.mdn-Input').classList.toggle('mdn-Input--activatedField', !!input.value);
+  }
+  Object.values(campos).forEach(ativarLabel);
+
+  // ===== Máscara da data (dd/mm/aaaa) =====
+  campos.nascimento.addEventListener('input', () => {
+    const d = campos.nascimento.value.replace(/\D/g, '').slice(0, 8);
+    campos.nascimento.value = d.length > 4 ? `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`
+      : d.length > 2 ? `${d.slice(0,2)}/${d.slice(2)}` : d;
+  });
+
+  // ===== Regras de cada campo (retorna mensagem de erro ou '' se válido) =====
+  const validadores = {
+    nome: (v) => v.trim().length < 3 ? 'Informe seu nome completo.' : '',
+    email: (v) => !v.trim() ? 'Informe seu e-mail.'
+      : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? '' : 'Informe um e-mail válido.',
+    rg: (v) => semRg.checked ? '' : (v.trim().length < 5 ? 'Informe o número do seu RG.' : ''),
+    nascimento: (v) => {
+      const m = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!m) return 'Informe a data no formato dd/mm/aaaa.';
+      const [, dd, mm, aaaa] = m.map(Number);
+      const dt = new Date(aaaa, mm - 1, dd);
+      const real = dt.getFullYear() === aaaa && dt.getMonth() === mm - 1 && dt.getDate() === dd;
+      return real && aaaa >= 1900 && dt <= new Date() ? '' : 'Informe uma data de nascimento válida.';
+    },
+    mae: (v) => v.trim().length < 3 ? 'Informe o nome completo da sua mãe.' : '',
+  };
+  // V2 (flag dadosPessoaisSemRgMae): a etapa não pede RG nem nome da mãe
+  // V2 (flag pagamentoSemTextoApoio): tira "Sem desconto nesta forma de pagamento" das formas de pagamento
+  if (window.APP_VERSION && window.APP_VERSION.flags.pagamentoSemTextoApoio) {
+    document.querySelectorAll('.desc-forma').forEach((el) => el.remove());
+  }
+  const semRgMae = !!(window.APP_VERSION && window.APP_VERSION.flags.dadosPessoaisSemRgMae);
+  if (semRgMae) {
+    ['blocoRg', 'blocoSemRg', 'blocoMae'].forEach((id) => { $(id).hidden = true; });
+    delete validadores.rg; delete validadores.mae;
+  }
+  const editaveis = Object.keys(validadores);
+
+  function erroDe(nome) { return validadores[nome](campos[nome].value); }
+  function mostrarErro(nome) {
+    const el = document.querySelector(`[data-error="${nome}"]`);
+    const msg = erroDe(nome);
+    el.textContent = msg; el.hidden = !msg;
+  }
+  function atualizarIcones() {
+    ['nome', 'nascimento'].forEach((n) => {
+      campos[n].closest('.mdn-Input').classList.toggle('is-valid', !erroDe(n));
+    });
+  }
+  const continuar = $('dadosContinuar');
+  function validarForm() {
+    atualizarIcones();
+    continuar.disabled = editaveis.some((n) => erroDe(n));
+  }
+  editaveis.forEach((n) => {
+    ['input', 'keyup', 'change'].forEach((evt) => campos[n].addEventListener(evt, () => {
+      ativarLabel(campos[n]);
+      // limpa a mensagem assim que o campo fica válido; só aparece de novo ao sair do campo
+      if (!erroDe(n)) document.querySelector(`[data-error="${n}"]`).hidden = true;
+      validarForm();
+    }));
+    campos[n].addEventListener('blur', () => { if (campos[n].value || n !== 'rg') mostrarErro(n); validarForm(); });
+  });
+
+  // "Não possuo RG": desabilita o campo e deixa de exigi-lo
+  semRg.addEventListener('change', () => {
+    campos.rg.disabled = semRg.checked;
+    campos.rg.closest('.mdn-Input').classList.toggle('is-readonly', semRg.checked);
+    if (semRg.checked) {
+      campos.rg.value = '';
+      ativarLabel(campos.rg);
+      document.querySelector('[data-error="rg"]').hidden = true;
+    }
+    validarForm();
+  });
+
+  // ===== Etapa concluída vira resumo editável =====
+  const CHAVE_DADOS = 'checkoutDados';
+  function salvarDados() {
+    const d = { semRg: semRg.checked };
+    editaveis.forEach((n) => { d[n] = campos[n].value; });
+    sessionStorage.setItem(CHAVE_DADOS, JSON.stringify(d));
+  }
+  function mostrarResumo() {
+    const comLabels = !!(window.APP_VERSION && window.APP_VERSION.flags.dadosResumoComLabels);
+    $('stepDados').classList.toggle('com-labels', comLabels);
+    if (comLabels) {
+      // V2: cada dado ganha um rótulo em negrito ("CPF", "E-mail", "Telefone"...), sem o nome em destaque
+      const itens = [['CPF', campos.cpf.value], ['E-mail', campos.email.value.trim()], ['Telefone', campos.celular.value]];
+      if (!semRgMae) itens.splice(1, 0, ['RG', semRg.checked ? 'Sem RG (CIN)' : campos.rg.value.trim()]);
+      itens.push(['Data de nascimento', campos.nascimento.value]);
+      if (!semRgMae) itens.push(['Nome da mãe', campos.mae.value.trim()]);
+      $('sNome').hidden = true;
+      $('sLinhas').innerHTML = itens.map(() => '<div class="item"><p class="lb"></p><p class="vl"></p></div>').join('');
+      [...$('sLinhas').children].forEach((el, i) => {
+        el.querySelector('.lb').textContent = itens[i][0];
+        el.querySelector('.vl').textContent = itens[i][1];
+      });
+    } else {
+      $('sNome').hidden = false;
+      $('sNome').textContent = campos.nome.value.trim();
+      const linhas = [campos.cpf.value, campos.email.value.trim(), campos.celular.value];
+      if (!semRgMae) linhas.push(semRg.checked ? 'Sem RG (CIN)' : campos.rg.value.trim());
+      linhas.push(campos.nascimento.value);
+      if (!semRgMae) linhas.push(campos.mae.value.trim());
+      $('sLinhas').innerHTML = linhas.map((l) => `<p></p>`).join('');
+      [...$('sLinhas').children].forEach((p, i) => { p.textContent = linhas[i]; });
+    }
+    $('dadosForm').hidden = true;
+    $('dadosResumo').hidden = false;
+    $('dadosBadge').hidden = false;
+    $('stepDados').classList.add('is-done');
+    salvarDados();
+    ativarEndereco();
+  }
+  function editarDados() {
+    $('dadosResumo').hidden = true;
+    $('dadosForm').hidden = false;
+    $('dadosBadge').hidden = true;
+    $('stepDados').classList.remove('is-done');
+    travarEndereco(); // editando os dados: as etapas seguintes voltam a ficar apagadas
+    validarForm();
+  }
+  $('dadosForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    validarForm();
+    if (continuar.disabled) return;
+    mostrarResumo();
+  });
+  $('dadosEditar').addEventListener('click', editarDados);
+
+  // ===== Etapa: confirme seu endereço =====
+  // Herda o endereço escolhido na tela de seleção (guardado em 'enderecoConfirmado').
+  // Aberto direto, sem passar pela jornada: cai no primeiro endereço disponível.
+  let enderecoEscolhido = null;
+  try { enderecoEscolhido = JSON.parse(sessionStorage.getItem('enderecoConfirmado') || 'null'); } catch (e) {}
+  if (!enderecoEscolhido) enderecoEscolhido = catalog.enderecos.find((e) => e.disponivel) || { endereco: '' };
+
+  const linhaEndereco = (enderecoEscolhido.endereco || '').toUpperCase();
+  const refEndereco = enderecoEscolhido.referencia ? `Referência: ${enderecoEscolhido.referencia}` : '';
+  // Complemento escolhido na tela de seleção (endereço novo já traz o complemento dentro do texto)
+  const comp = enderecoEscolhido.recemAdicionado ? '' : (enderecoEscolhido.complemento || '');
+  const compEndereco = comp && !/^sem complemento$/i.test(comp) ? `Complemento: ${comp}` : '';
+
+  function preencher(idTexto, texto) { const el = $(idTexto); el.textContent = texto; el.hidden = !texto; }
+  $('endLinha').textContent = linhaEndereco;
+  preencher('endRef', refEndereco);
+  preencher('endComp', compEndereco);
+  // No modal o endereço aparece com a capitalização do Figma ("Henri Dunant, 780, ... - São Paulo/SP - CEP: ...").
+  // O texto vem em maiúsculas, então reconstruímos: cada palavra com inicial maiúscula,
+  // conectivos em minúscula, UF (e o N de S/N) em maiúsculas e CEP intacto.
+  function capitalizarEndereco(txt) {
+    const minusculas = ['de', 'da', 'do', 'das', 'dos', 'e'];
+    return txt.toLowerCase()
+      .replace(/(^|[\s,(-])([a-zà-ú])/g, (m, pre, c) => pre + c.toUpperCase())
+      .replace(/\b(De|Da|Do|Das|Dos|E)\b/g, (m) => (minusculas.includes(m.toLowerCase()) ? m.toLowerCase() : m))
+      .replace(/\/([a-z]{1,2})\b/gi, (m, uf) => '/' + uf.toUpperCase())
+      .replace(/\bcep\b/i, 'CEP');
+  }
+  // No modal o complemento que o usuário informou entra no próprio endereço, logo depois do
+  // número ("R Roneto Macedo, 19, Apto 12, Campo Grande - ..."), como no app no ar.
+  // Endereço adicionado já traz o complemento no texto (exceto "Sem complemento"); endereço
+  // da lista recebe o complemento escolhido na tela de seleção.
+  function enderecoParaModal() {
+    const comp = (enderecoEscolhido.complemento || '').trim();
+    const txt = enderecoEscolhido.endereco || '';
+    const jaTemComplemento = enderecoEscolhido.recemAdicionado && !/^sem complemento$/i.test(comp);
+    if (!comp || jaTemComplemento) return txt.toUpperCase();
+    const partes = txt.split(', ');          // [logradouro, número, ...resto]
+    partes.splice(Math.min(2, partes.length), 0, comp);
+    return partes.join(', ').toUpperCase();
+  }
+  $('sheetLinha').textContent = capitalizarEndereco(enderecoParaModal());
+  preencher('sheetRef', refEndereco);
+
+  let enderecoConfirmadoNoCheckout = sessionStorage.getItem('checkoutEnderecoOk') === '1';
+  // Card resumo (endereço já confirmado): endereço em maiúsculas + referência/complemento
+  $('endResLinha').textContent = linhaEndereco;
+  preencher('endResRef', refEndereco);
+  preencher('endResComp', compEndereco);
+
+  function travarEndereco() {
+    $('stepEndereco').classList.add('is-locked');
+    $('stepEndereco').classList.remove('is-active', 'is-done');
+    $('endBody').hidden = true;
+    $('endBadge').hidden = true;
+    travarInstalacao();
+  }
+  function ativarEndereco() {
+    $('stepEndereco').classList.remove('is-locked');
+    $('stepEndereco').classList.add('is-active');
+    $('endBody').hidden = false;
+    // Já confirmado: endereço vira card resumo com o check verde; sem o botão Continuar
+    const ok = enderecoConfirmadoNoCheckout;
+    document.querySelector('#endBody .end-row').hidden = ok;
+    $('endAcao').hidden = ok;
+    $('endResumo').hidden = !ok;
+    $('endBadge').hidden = !ok;
+    $('stepEndereco').classList.toggle('is-active', !ok);
+    $('stepEndereco').classList.toggle('is-done', ok);
+    if (ok) ativarInstalacao(); else travarInstalacao();
+  }
+
+  // ===== Etapa: agende sua instalação =====
+  const agenda = catalog.agendamento || { periodos: [], diaInicial: 1, quantidade: 10 };
+  const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const DIAS_COMPLETOS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const dois = (n) => String(n).padStart(2, '0');
+  // Regra das datas: D+diaInicial até D+(diaInicial+quantidade-1), contadas a partir de hoje.
+  function gerarDatas() {
+    const hoje = new Date();
+    return Array.from({ length: agenda.quantidade }, (_, i) => {
+      const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + agenda.diaInicial + i);
+      return { date: d, dia: DIAS_SEMANA[d.getDay()], diaCompleto: DIAS_COMPLETOS[d.getDay()], data: `${dois(d.getDate())}/${dois(d.getMonth() + 1)}` };
+    });
+  }
+  const datas = gerarDatas();
+  // V2 (flag agendamentoDataPrimeiro): data primeiro, período depois, na mesma etapa e sem nada pré-selecionado
+  const dataPrimeiro = !!(window.APP_VERSION && window.APP_VERSION.flags.agendamentoDataPrimeiro);
+  let periodoIdx = dataPrimeiro ? -1 : 0;  // V1: o primeiro período já vem selecionado
+  let dataIdx = -1;        // nenhuma data até o usuário escolher
+  // O botão só habilita com o que a versão exige: V1 só a data; V2 data e período
+  function atualizarBotaoAgenda() {
+    $('instContinuar').disabled = !(dataIdx >= 0 && (!dataPrimeiro || periodoIdx >= 0));
+  }
+  $('periodos').innerHTML = agenda.periodos.map((p, i) => `
+    ${i ? '<div class="divider"></div>' : ''}
+    <div class="periodo" data-idx="${i}">
+      <div class="infos"><p class="nome">${p.nome}</p><p class="hora">${p.horario}</p></div>
+      <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Selecionar período ${p.nome}">
+        <input type="radio" class="mdn-Radio-input" name="periodo" role="radio" value="${i}" ${(i === 0 && !dataPrimeiro) ? 'checked' : ''}>
+        <label class="mdn-Radio-label"></label>
+      </div>
+    </div>`).join('');
+  $('periodos').addEventListener('click', (e) => {
+    const row = e.target.closest('.periodo');
+    if (!row) return;
+    periodoIdx = Number(row.dataset.idx);
+    $('periodos').querySelectorAll('.mdn-Radio-input').forEach((r, i) => { r.checked = i === periodoIdx; });
+    atualizarBotaoAgenda();
+  });
+
+  $('datas').innerHTML = datas.map((d, i) =>
+    `<button type="button" class="data-card" role="radio" aria-checked="false" data-idx="${i}"><span>${d.dia}</span><span>${d.data}</span></button>`).join('');
+  $('datas').addEventListener('click', (e) => {
+    if ($('datas').dataset.moved === '1') return; // era um arraste, não um clique
+    const card = e.target.closest('.data-card');
+    if (!card) return;
+    dataIdx = Number(card.dataset.idx);
+    $('datas').querySelectorAll('.data-card').forEach((c, i) => {
+      c.classList.toggle('is-selected', i === dataIdx);
+      c.setAttribute('aria-checked', String(i === dataIdx));
+    });
+    atualizarBotaoAgenda();
+  });
+  if (dataPrimeiro) {
+    // V2: tudo na mesma etapa — texto, datas, divisor e períodos (margens de 16px do Figma)
+    const corpo = $('instBody');
+    corpo.querySelector('.intro').textContent = 'Escolha a data e o período da visita técnica para instalação:';
+    corpo.querySelector('.intro').style.padding = '0 16px 8px';
+    const datasSec = corpo.querySelector('.datas-sec');
+    datasSec.querySelector('.lbl').remove();                  // sem o título "Escolha uma data de instalação"
+    datasSec.style.padding = '16px 16px 32px';
+    const botao = $('instContinuar');
+    datasSec.removeChild(botao);
+    corpo.querySelector(':scope > .divider').remove();
+    const divisor = document.createElement('div'); divisor.className = 'divider';
+    const cta = document.createElement('div');
+    cta.style.cssText = 'padding:0 16px 32px';
+    cta.appendChild(botao);
+    corpo.append(datasSec, divisor, $('periodos'), cta);      // data -> divisor -> período -> botão
+    corpo.querySelectorAll('.periodo').forEach((p) => { p.style.padding = '32px 16px'; });
+    $('datas').style.margin = '0 -16px'; $('datas').style.padding = '0 16px';
+    $('stepInstalacao').classList.add('m16');
+    atualizarBotaoAgenda();
+  }
+  // Arrastar com o mouse para rolar o carrossel de datas (no celular é o próprio dedo)
+  (function () {
+    const el = $('datas'); let down = false, startX = 0, startLeft = 0;
+    el.addEventListener('mousedown', (e) => { down = true; startX = e.pageX; startLeft = el.scrollLeft; el.dataset.moved = '0'; });
+    window.addEventListener('mousemove', (e) => {
+      if (!down) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 5) { el.dataset.moved = '1'; el.classList.add('is-dragging'); }
+      el.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener('mouseup', () => {
+      if (!down) return; down = false; el.classList.remove('is-dragging');
+      setTimeout(() => { el.dataset.moved = '0'; }, 0);
+    });
+  })();
+
+  // ===== Etapa: formas de pagamento =====
+  const pagDados = catalog.checkoutPagamento || { bancos: [], diasVencimento: [5, 8, 10, 15, 20] };
+  $('banco').insertAdjacentHTML('beforeend', pagDados.bancos.map((b) => `<option value="${b.toUpperCase()}">${b.toUpperCase()}</option>`).join(''));
+  const pagCampos = { banco: $('banco'), agencia: $('agencia'), conta: $('conta'), digito: $('digito') };
+  let formaPag = 'boleto';       // boleto já vem selecionado
+  let faturaPag = 'email';       // e-mail já vem selecionado
+  let vencPag = pagDados.diasVencimento[0]; // primeiro dia já vem selecionado
+
+  function validarPagamento() {
+    if (formaPag !== 'debito') { $('pagContinuar').disabled = false; return; }
+    $('pagContinuar').disabled = !(pagCampos.banco.value && pagCampos.agencia.value && pagCampos.conta.value && pagCampos.digito.value);
+  }
+  function selecionarRadioGrupo(container, seletorLinha, atributo, valor, nome) {
+    container.querySelectorAll(seletorLinha).forEach((row) => {
+      const r = row.querySelector(`.mdn-Radio-input[name="${nome}"]`);
+      if (r) r.checked = row.dataset[atributo] === valor;
+    });
+  }
+  // Forma de pagamento: tocar na linha (fora dos campos) escolhe a forma
+  $('pagBody').addEventListener('click', (e) => {
+    const forma = e.target.closest('.forma');
+    if (forma && !e.target.closest('.debito-campos')) {
+      formaPag = forma.dataset.forma;
+      selecionarRadioGrupo($('pagBody'), '.forma', 'forma', formaPag, 'forma');
+      $('debitoCampos').hidden = formaPag !== 'debito';
+      validarPagamento();
+      return;
+    }
+    const op = e.target.closest('.opcao');
+    if (op) {
+      faturaPag = op.dataset.fatura;
+      selecionarRadioGrupo($('pagBody'), '.opcao', 'fatura', faturaPag, 'fatura');
+    }
+  });
+  // Campos do débito: só dígitos em agência/conta; dígito aceita número ou X
+  [['agencia', /\D/g], ['conta', /\D/g], ['digito', /[^0-9xX]/g]].forEach(([id, re]) => {
+    $(id).addEventListener('input', () => {
+      $(id).value = $(id).value.replace(re, id === 'digito' ? '' : '');
+      if (id === 'digito') $(id).value = $(id).value.toUpperCase();
+    });
+  });
+  Object.values(pagCampos).forEach((el) => {
+    ['input', 'keyup', 'change', 'blur'].forEach((evt) => el.addEventListener(evt, () => { ativarLabel(el); validarPagamento(); }));
+  });
+  // Modal "Não encontrou seu banco?": sobe de baixo; seta e X fecham
+  function abrirBancoModal() { $('bancoModal').classList.add('is-open'); $('bancoModal').setAttribute('aria-hidden', 'false'); }
+  function fecharBancoModal() { $('bancoModal').classList.remove('is-open'); $('bancoModal').setAttribute('aria-hidden', 'true'); }
+  $('bancoNaoEncontrado').addEventListener('click', abrirBancoModal);
+  $('bancoVoltar').addEventListener('click', fecharBancoModal);
+  $('bancoFechar').addEventListener('click', fecharBancoModal);
+
+  // Dias de vencimento (carrossel, o primeiro vem selecionado)
+  $('venc').innerHTML = pagDados.diasVencimento.map((d) =>
+    `<button type="button" class="venc-card${d === vencPag ? ' is-selected' : ''}" role="radio" aria-checked="${d === vencPag}" data-dia="${d}"><span class="d">Dia</span><span class="n">${d}</span></button>`).join('');
+  $('venc').addEventListener('click', (e) => {
+    if ($('venc').dataset.moved === '1') return;
+    const c = e.target.closest('.venc-card'); if (!c) return;
+    vencPag = Number(c.dataset.dia);
+    $('venc').querySelectorAll('.venc-card').forEach((x) => {
+      const sel = Number(x.dataset.dia) === vencPag;
+      x.classList.toggle('is-selected', sel); x.setAttribute('aria-checked', String(sel));
+    });
+  });
+  (function () {
+    const el = $('venc'); let down = false, startX = 0, startLeft = 0;
+    el.addEventListener('mousedown', (e) => { down = true; startX = e.pageX; startLeft = el.scrollLeft; el.dataset.moved = '0'; });
+    window.addEventListener('mousemove', (e) => {
+      if (!down) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 5) { el.dataset.moved = '1'; el.classList.add('is-dragging'); }
+      el.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener('mouseup', () => {
+      if (!down) return; down = false; el.classList.remove('is-dragging');
+      setTimeout(() => { el.dataset.moved = '0'; }, 0);
+    });
+  })();
+  // Três próximas faturas: o 1º mês é o do primeiro vencimento depois da instalação (proporcional)
+  function mesesFaturas() {
+    const inst = datas[dataIdx].date;
+    let primeiro = new Date(inst.getFullYear(), inst.getMonth(), vencPag);
+    if (primeiro <= inst) primeiro = new Date(inst.getFullYear(), inst.getMonth() + 1, vencPag);
+    return [0, 1, 2].map((i) => dois(((primeiro.getMonth() + i) % 12) + 1));
+  }
+  const IC_EDIT = '<button type="button" class="edit" data-edit-pag aria-label="Editar pagamento"><i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i></button>';
+  const moedaBR = (v) => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function mostrarResumoPagamento() {
+    const meses = mesesFaturas();
+    const preco = (catalog.produtos[produtoId] || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]]).preco;
+    const debito = formaPag === 'debito';
+    $('pagResumo').innerHTML = `
+      <div class="summary"><div class="tx">
+        <p class="n">${debito ? 'Débito em conta' : 'Boleto'}</p>
+        <p class="sub">Vencimento todo dia ${vencPag}</p>
+        <p class="nota">Você só começa a pagar seu novo plano após a instalação da sua internet.</p>
+      </div>${IC_EDIT}</div>
+      <div class="summary"><div class="tx faturas">
+        <p class="t">Próximas 3 faturas</p>
+        <p class="d">Considerando seu plano, taxas e compras extras, se houver.</p>
+        <div class="lin"><span>Mês ${meses[0]}</span><span>Proporcional*</span></div>
+        <div class="lin"><span>Mês ${meses[1]}</span><span>${moedaBR(preco)}</span></div>
+        <div class="lin"><span>Mês ${meses[2]}</span><span>${moedaBR(preco)}</span></div>
+        <p class="rodape">*O valor a ser pago é proporcional ao tempo entre a data de instalação e a data de vencimento.</p>
+      </div></div>
+      <div class="aviso">
+        <i class="mdn-Icon-circulo-exclamacao" aria-hidden="true"></i>
+        <div><p>Fatura unificada</p><p>Plano celular e internet estarão em uma única fatura.</p><p>O pagamento do novo plano começará depois que a internet for instalada.</p></div>
+      </div>`;
+    $('pagBody').hidden = true;
+    $('pagResumo').hidden = false;
+    $('pagBadge').hidden = false;
+    $('stepPagamento').classList.add('is-done');
+    $('termosWrap').hidden = false;
+    setTimeout(() => $('termosWrap').scrollIntoView({ behavior: 'smooth', block: 'end' }), 50);
+  }
+  function editarPagamento() {
+    $('pagResumo').hidden = true; $('pagBadge').hidden = true;
+    $('stepPagamento').classList.remove('is-done');
+    $('pagBody').hidden = false;
+    esconderTermos();
+    validarPagamento();
+  }
+  function esconderTermos() {
+    $('termosWrap').hidden = true;
+    const cb = $('termosCheckbox').querySelector('.mdn-Checkbox-input');
+    cb.checked = false; $('finalizarBtn').disabled = true;
+  }
+  $('pagResumo').addEventListener('click', (e) => { if (e.target.closest('[data-edit-pag]')) editarPagamento(); });
+  $('pagContinuar').addEventListener('click', () => {
+    validarPagamento();
+    if ($('pagContinuar').disabled) return;
+    mostrarResumoPagamento();
+  });
+
+  // Termos: o botão Finalizar pedido só habilita com o checkbox marcado
+  const termosCb = $('termosCheckbox').querySelector('.mdn-Checkbox-input');
+  termosCb.addEventListener('change', () => { $('finalizarBtn').disabled = !termosCb.checked; });
+  // O texto do aceite tem várias linhas e o componente só reage ao clique na primeira:
+  // clicar em qualquer ponto do texto (menos no link) também marca/desmarca.
+  $('termosCheckbox').addEventListener('click', (e) => {
+    if (!e.target.closest('.mdn-Checkbox-text') || e.target.closest('.termo-link')) return;
+    termosCb.checked = !termosCb.checked;
+    termosCb.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  // Clicar no link do termo não marca/desmarca o checkbox
+  $('termoLink').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); showToast('Termo de condições ainda não implementado'); }, true);
+  $('finalizarBtn').addEventListener('click', () => {
+    if ($('finalizarBtn').disabled) return;
+    // Guarda tudo que a tela de conclusão precisa (dados informados ao longo da jornada)
+    const agora = new Date();
+    const aleatorio = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+    const numero = `${agora.getFullYear()}${dois(agora.getMonth() + 1)}${dois(agora.getDate())}${dois(agora.getHours())}${dois(agora.getMinutes())}${dois(agora.getSeconds())}${aleatorio}`;
+    const p = agenda.periodos[periodoIdx], d = datas[dataIdx];
+    sessionStorage.setItem('pedidoConcluido', JSON.stringify({
+      produtoId: produtoId,
+      nome: campos.nome.value.trim(),
+      endereco: capitalizarEndereco(enderecoParaModal()),
+      referencia: refEndereco,
+      dia: `${d.diaCompleto} ${d.data}`,
+      periodo: p.nome, horario: p.horario,
+      forma: formaPag, fatura: faturaPag, vencimento: vencPag,
+      fidelidade: sessionStorage.getItem('fidelidade') || 'com',
+      dataPedido: `${dois(agora.getDate())}/${dois(agora.getMonth() + 1)}/${agora.getFullYear()}`,
+      numero: numero,
+    }));
+    // jornada concluída: limpa o estado do checkout para um próximo pedido começar do zero
+    ['checkoutDados', 'checkoutEnderecoOk'].forEach((k) => sessionStorage.removeItem(k));
+    location.href = 'conclusao.html?produto=' + encodeURIComponent(produtoId || '');
+  });
+
+  function abrirPagamento() { $('stepPagamento').classList.remove('is-locked'); $('pagBody').hidden = false; validarPagamento(); }
+  function travarPagamento() {
+    $('stepPagamento').classList.add('is-locked'); $('stepPagamento').classList.remove('is-done');
+    $('pagBody').hidden = true; $('pagResumo').hidden = true; $('pagBadge').hidden = true;
+    esconderTermos();
+  }
+
+  function travarInstalacao() {
+    travarPagamento();
+    $('stepInstalacao').classList.add('is-locked');
+    $('stepInstalacao').classList.remove('is-done');
+    $('instBody').hidden = true; $('instResumo').hidden = true; $('instBadge').hidden = true;
+  }
+  function ativarInstalacao() {
+    $('stepInstalacao').classList.remove('is-locked');
+    // Agendamento já concluído nesta visita: mostra o resumo; senão, o formulário
+    if (instalacaoConcluida) mostrarResumoInstalacao(); else { $('instBody').hidden = false; $('instResumo').hidden = true; }
+  }
+  let instalacaoConcluida = false;
+  function mostrarResumoInstalacao() {
+    const p = agenda.periodos[periodoIdx], d = datas[dataIdx];
+    // Formato do Figma: "Quarta-feira 30/04" / "No período da manhã" / "das 08:00 — Até 12:00"
+    $('instResPeriodo').textContent = `${d.diaCompleto} ${d.data}`;
+    const horario = p.horario.charAt(0).toLowerCase() + p.horario.slice(1);
+    $('instResData').innerHTML = `<p></p><p></p>`;
+    $('instResData').firstElementChild.textContent = `No período da ${p.nome.toLowerCase()}`;
+    $('instResData').lastElementChild.textContent = horario;
+    $('instBody').hidden = true; $('instResumo').hidden = false; $('instBadge').hidden = false;
+    $('stepInstalacao').classList.add('is-done');
+  }
+  $('instContinuar').addEventListener('click', () => {
+    if (dataIdx < 0) return;
+    instalacaoConcluida = true;
+    mostrarResumoInstalacao();
+    // próxima etapa (formas de pagamento) fica acesa; conteúdo dela vem depois
+    abrirPagamento(); // a próxima etapa já vem aberta
+  });
+  $('instEditar').addEventListener('click', () => {
+    instalacaoConcluida = false;
+    $('stepInstalacao').classList.remove('is-done');
+    $('instResumo').hidden = true; $('instBadge').hidden = true; $('instBody').hidden = false;
+    travarPagamento();
+  });
+  // Editar o endereço (lápis): reabre a confirmação (Sim mantém, Alterar volta à seleção)
+  $('endEditar').addEventListener('click', () => abrirSheet());
+
+  // Bottom sheet "Confirmar endereço"
+  function abrirSheet() {
+    $('sheetBackdrop').classList.add('is-open');
+    $('sheet').classList.add('is-open');
+    $('sheet').setAttribute('aria-hidden', 'false');
+  }
+  function fecharSheet() {
+    $('sheetBackdrop').classList.remove('is-open');
+    $('sheet').classList.remove('is-open');
+    $('sheet').setAttribute('aria-hidden', 'true');
+  }
+  $('endContinuar').addEventListener('click', abrirSheet);
+  $('sheetBackdrop').addEventListener('click', fecharSheet);
+  $('sheetSim').addEventListener('click', () => {
+    fecharSheet();
+    enderecoConfirmadoNoCheckout = true;
+    sessionStorage.setItem('checkoutEnderecoOk', '1');
+    ativarEndereco(); // próxima etapa (agendamento) fica acesa; conteúdo dela vem depois
+  });
+  // Alterar endereço: volta pra seleção (endereços adicionados na sessão continuam na lista)
+  // Jornada ATUAL no ar (comportamento "errado" replicado de propósito): ao alterar o
+  // endereço o usuário refaz tudo, inclusive os dados pessoais. A versão melhorada
+  // (manter os dados já preenchidos) é controlada pela flag manterDadosAoAlterarEndereco em app-versions.js.
+  const MANTER_DADOS_AO_ALTERAR_ENDERECO = !!(window.APP_VERSION && window.APP_VERSION.flags.manterDadosAoAlterarEndereco);
+  $('sheetAlterar').addEventListener('click', () => {
+    sessionStorage.removeItem('checkoutEnderecoOk');
+    if (!MANTER_DADOS_AO_ALTERAR_ENDERECO) sessionStorage.removeItem(CHAVE_DADOS);
+    location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produtoId || '');
+  });
+
+  // Dados pessoais já concluídos antes (ex: voltou da tela de endereço): restaura o resumo
+  try {
+    const salvo = JSON.parse(sessionStorage.getItem(CHAVE_DADOS) || 'null');
+    if (salvo) {
+      editaveis.forEach((n) => { campos[n].value = salvo[n] || ''; ativarLabel(campos[n]); });
+      semRg.checked = !!salvo.semRg;
+      semRg.dispatchEvent(new Event('change'));
+      validarForm();
+      if (!continuar.disabled) mostrarResumo();
+    }
+  } catch (e) {}
+
+  function showToast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('is-visible');
+    clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('is-visible'), 2200);
+  }
+
+  // ===== Navegação =====
+  // Fechar (X) volta para a PDP: na V2 é a PDP com fidelidade (pdp-v2); na V1, a PDP antiga
+  const voltarProduto = () => {
+    const pdp = (window.APP_VERSION && window.APP_VERSION.flags.pdpV2) ? 'pdp-v2.html' : 'produto-detalhe.html';
+    location.href = pdp + '?produto=' + encodeURIComponent(produtoId || '');
+  };
+  $('backBtn').addEventListener('click', () => { if (history.length > 1) history.back(); else voltarProduto(); });
+  $('closeBtn').addEventListener('click', voltarProduto);
+
+  validarForm();
+</script>
+</body>
+</html>

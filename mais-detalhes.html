@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mais detalhes · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --bg-light:#f8f8f8;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:0;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Spinner de carregamento (overlay tela cheia, mesmo padrão de ofertas-fibra.html) ===== */
+  .loading-overlay{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  /* O .mdn-Spinner real do Mondrian nasce como bloqueador de página inteira
+     (position:fixed, height:100vh, width:100%, fundo próprio) — sem isso,
+     ele escapa da moldura do app-frame (fixed ignora overflow:hidden do
+     ancestral) e cobre a tela toda, comendo os cantos arredondados/sombra
+     que simulam o aparelho. Sobrescrevemos pra ele só preencher o overlay. */
+  .loading-overlay .mdn-Spinner{
+    position:static;
+    height:auto;
+    width:auto;
+    background:transparent;
+  }
+
+
+  .app-bar .back-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .divider{height:1px;background:var(--gray-line);flex-shrink:0;}
+  .marcas{display:flex;align-items:center;}
+  .marcas img{width:32px;height:32px;display:block;margin-right:-4px;}
+  .marcas img:last-child{margin-right:0;}
+
+  .app-bar{padding:24px 16px;}
+  .lbl{margin:0;font-weight:700;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .rec{padding:24px 16px 16px;display:flex;flex-direction:column;gap:16px;}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;}
+  .tag{background:var(--bg-light);border-radius:4px;padding:4px 8px;display:flex;align-items:center;gap:4px;font-weight:500;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .tag i{font-size:16px;}
+  .benef{padding:24px 16px 0;display:flex;flex-direction:column;gap:16px;}
+  .grupo{display:flex;flex-direction:column;gap:8px;}
+  .grupo p{margin:0;font-weight:500;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .link-apps{margin:24px 16px;width:calc(100% - 32px);background:var(--bg-light);border-radius:8px;padding:16px;min-height:56px;display:flex;align-items:center;gap:16px;text-align:left;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .link-apps span:first-child{flex:1;min-width:0;}
+  .link-apps i{font-size:20px;flex-shrink:0;}
+  .oferta{padding:24px 16px;display:flex;flex-direction:column;gap:4px;}
+  .oferta .rot{margin:0;font-size:14px;line-height:1.3;color:var(--ink);}
+  .oferta h2{margin:4px 0 0;font-family:'AMX',sans-serif;font-weight:700;font-size:20px;line-height:1.3;}
+  .oferta .preco{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+  .oferta .obs{margin:0;font-size:14px;line-height:1.3;color:var(--ink);}
+  .sheet-bar{
+    position:absolute;left:0;right:0;bottom:0;z-index:10;background:var(--white);
+    border-radius:var(--radius-sm) var(--radius-sm) 0 0;border-bottom:1px solid var(--bg-light);
+    box-shadow:0 -4px 8px -2px rgba(31,29,29,0.16);padding:32px 16px;
+  }
+  .btn-primary{
+    width:100%;border-radius:var(--radius-pill);background:var(--red);color:var(--white);
+    padding:16px 32px;display:flex;align-items:center;justify-content:center;
+    font-weight:500;font-size:16px;line-height:1;transition:filter .2s cubic-bezier(0.2,0,0,1);
+  }
+  @media (hover:hover){.btn-primary:hover{filter:brightness(0.9);}}
+  .btn-primary:active{transform:scale(0.99);}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea">
+    <div class="app-bar">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Voltar">
+        <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+      <h1>Mais detalhes</h1>
+    </div>
+
+    <div class="rec" id="recWrap">
+      <p class="lbl">Plano recomendado para:</p>
+      <div class="tags" id="tags"></div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="benef">
+      <p class="lbl">Benefícios:</p>
+      <div class="grupo" id="gStreaming"><p>Streaming incluso:</p><div class="marcas" id="mStreaming"></div></div>
+      <div class="grupo" id="gServicos"><p>Serviços digitais:</p><div class="marcas" id="mServicos"></div></div>
+    </div>
+
+    <button type="button" class="link-apps" id="appsBtn">
+      <span>Detalhes sobre apps e serviços</span>
+      <i class="mdn-Icon-direita" aria-hidden="true"></i>
+    </button>
+    <div class="divider"></div>
+
+    <p class="lbl" style="padding:24px 16px 0">Aproveite essa oferta imperdível:</p>
+    <div class="oferta">
+      <p class="rot" id="rotulo"></p>
+      <h2 id="titulo"></h2>
+      <p class="preco" id="preco"></p>
+      <p class="obs" id="obs"></p>
+    </div>
+  </div>
+
+  <div class="sheet-bar" id="sheetBar">
+    <button type="button" class="btn-primary" id="aproveitarBtn">Aproveitar essa oferta</button>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay" hidden>
+    <div class="mdn-Spinner mdn-Spinner--default">
+      <span class="mdn-Icon-claro mdn-Icon--lg" aria-label="Carregando" tabindex="0"></span>
+    </div>
+  </div>
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const $ = (id) => document.getElementById(id);
+  const produtoId = new URLSearchParams(location.search).get('produto');
+  const produto = (catalog.produtos && catalog.produtos[produtoId])
+    || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]];
+  // Produto sem linha na aba "Mais detalhes (V2)": monta o mínimo com o que existe
+  const d = produto.maisDetalhes || { recomendado: [], streaming: [], servicos: [], rotulo: '', titulo: produto.nome, textoPreco: '', apps: [] };
+
+  $('tags').innerHTML = d.recomendado.map(() => '<span class="tag"><i aria-hidden="true"></i><span></span></span>').join('');
+  $('tags').querySelectorAll('.tag').forEach((el, i) => {
+    el.querySelector('i').className = 'mdn-Icon-' + d.recomendado[i].icone;
+    el.querySelector('span').textContent = d.recomendado[i].texto;
+  });
+  $('recWrap').hidden = !d.recomendado.length;
+
+  const marcas = (l) => l.map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('');
+  $('mStreaming').innerHTML = marcas(d.streaming); $('gStreaming').hidden = !d.streaming.length;
+  $('mServicos').innerHTML = marcas(d.servicos);   $('gServicos').hidden = !d.servicos.length;
+
+  $('rotulo').textContent = d.rotulo;
+  $('titulo').textContent = d.titulo;
+  $('preco').textContent = 'R$ ' + produto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' / mês';
+  $('obs').textContent = d.textoPreco; $('obs').hidden = !d.textoPreco; // sem texto de apoio abaixo do preço
+
+  $('backBtn').addEventListener('click', () => { if (history.length > 1) history.back(); else location.href = 'ofertas-fibra.html'; });
+  $('appsBtn').addEventListener('click', () => { location.href = 'servicos-digitais.html?produto=' + encodeURIComponent(produto.id); });
+  // "Aproveitar essa oferta" faz o mesmo que "Eu quero" na vitrine: spinner de 2s e seleção de endereço
+  $('aproveitarBtn').addEventListener('click', () => {
+    $('loadingOverlay').hidden = false;
+    setTimeout(() => { location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produto.id); }, 2000);
+  });
+  // A barra fixa fica por cima do fim da tela: reserva o espaço medindo a altura real
+  function ajustar() { $('scrollArea').style.paddingBottom = ($('sheetBar').offsetHeight + 16) + 'px'; }
+  ajustar(); window.addEventListener('resize', ajustar);
+</script>
+</body>
+</html>

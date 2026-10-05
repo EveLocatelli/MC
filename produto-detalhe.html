@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detalhes do produto · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --bg-light:#f8f8f8;
+    --yellow:#ffc722;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:140px;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Divider Section — separador entre blocos =====
+     Estrutura real do Figma: duas peças brancas de 6px com 4px de GAP entre
+     elas (não coladas) — é esse gap que deixa o fundo cinza do container
+     visível como uma linha sólida de ~4px; a versão anterior (::before/::after
+     encostados, sem gap) cobria o cinza por completo e a linha sumia. */
+  .divider-section{
+    height:16px;
+    background:var(--gray-line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .divider-section .piece{
+    height:6px;
+    background:var(--white);
+  }
+  .divider-section .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .divider-section .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+
+  .divider{height:1px;background:var(--gray-line);flex-shrink:0;}
+  /* ===== Toast simples (ações ainda sem tela final) ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:100px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:30;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+
+  .app-bar h1{flex:1;min-width:0;}
+  .eyebrow{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+
+  /* ===== Topo ===== */
+  .topo{padding:24px 16px;display:flex;flex-direction:column;gap:16px;}
+  .topo .heading{display:flex;flex-direction:column;gap:12px;}
+  .topo .icon-wifi{color:var(--red);}
+  .topo h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:24px;line-height:1.3;}
+  .topo p.sub{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+
+  /* ===== Info block ===== */
+  .info-block{padding:32px 16px;display:flex;align-items:center;gap:24px;}
+  .info-block.col{flex-direction:column;align-items:flex-start;}
+  .info-block .heading{display:flex;flex-direction:column;gap:12px;}
+  .info-block h3{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:20px;line-height:1.3;}
+  .info-block p.text{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .tag-ok{display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:var(--radius-xs);background:var(--green-bg);color:var(--green-text);font-weight:500;font-size:12px;line-height:1.3;width:fit-content;}
+  .tag-ok i{font-size:16px;}
+  .green{color:var(--green-text);}
+  .local-card{width:100%;background:var(--bg-light);border-radius:var(--radius-sm);padding:24px;display:flex;align-items:center;gap:24px;}
+  .local-card p{flex:1;margin:0;font-weight:500;font-size:16px;line-height:1.3;}
+  .link-arrow{display:flex;align-items:center;gap:4px;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);text-align:left;}
+
+  /* ===== Características ===== */
+  .feature{padding:32px 16px;display:flex;align-items:center;gap:24px;}
+  .feature .ic{width:72px;height:72px;flex-shrink:0;border:1px solid var(--gray-line);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;}
+  .feature .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;font-size:16px;line-height:1.3;}
+  .feature .tx .t{margin:0;font-weight:500;}
+  .feature .tx .d{margin:0;color:var(--gray-dark);}
+  .feature .tx .t.no-desc{font-family:'AMX',sans-serif;}
+
+  .marcas{display:flex;align-items:center;}
+  .marcas img{width:32px;height:32px;display:block;}
+
+  .btn-primary{
+    height:auto;border-radius:var(--radius-pill);background:var(--red);color:var(--white);
+    display:inline-flex;align-items:center;justify-content:center;
+    font-weight:500;font-size:16px;line-height:1.3;
+    transition:filter .2s cubic-bezier(0.2,0,0,1);
+  }
+  .btn-primary.sm{height:40px;padding:8px 24px;}
+  .btn-primary.md{height:48px;padding:16px 32px;line-height:1;}
+  @media (hover:hover){.btn-primary:hover{filter:brightness(0.9);}}
+  .btn-primary:active{transform:scale(0.99);}
+
+  /* ===== Carrinho fixo no rodapé (Cart Bottom Sheet) ===== */
+  .cart{
+    position:absolute;left:0;right:0;bottom:0;z-index:10;
+    background:var(--white);border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+    border-bottom:1px solid var(--bg-light);
+    box-shadow:0 -4px 8px -2px rgba(31,29,29,0.16);
+    padding:12px 16px 16px;display:flex;flex-direction:column;gap:16px;
+  }
+  .cart .row{display:flex;align-items:center;gap:8px;}
+  .cart .totals{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;font-weight:500;font-size:12px;line-height:1.3;}
+  .cart .totals .lbl{color:var(--gray-dark);opacity:.64;}
+  .cart-btn{position:relative;width:40px;height:40px;flex-shrink:0;}
+  .cart-btn .circle{width:40px;height:40px;border:1px solid var(--gray-line);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;}
+  .cart-btn .badge{position:absolute;top:0;right:0;min-width:16px;height:16px;border-radius:var(--radius-pill);background:var(--red);color:var(--white);font-size:12px;line-height:16px;text-align:center;letter-spacing:-0.13px;}
+  .btn-sale{width:100%;padding:16px 32px;border-radius:var(--radius-pill);background:var(--yellow);font-weight:500;font-size:16px;line-height:1;color:var(--ink);text-align:center;transition:filter .2s cubic-bezier(0.2,0,0,1);}
+  @media (hover:hover){.btn-sale:hover{filter:brightness(0.95);}}
+  .btn-sale:active{transform:scale(0.99);}
+  .toast{bottom:150px;}
+
+  .toast{z-index:60;}
+
+  /* ===== Modal "Resumo do pedido" (carrinho) — sobe de baixo pra cima ===== */
+  .resumo-modal{
+    position:absolute;inset:0;z-index:45;background:var(--white);
+    display:flex;flex-direction:column;
+    transform:translateY(100%);visibility:hidden;
+    transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s linear .35s;
+  }
+  .resumo-modal.is-open{transform:translateY(0);visibility:visible;transition:transform .35s cubic-bezier(0.05,0.7,0.1,1), visibility 0s;}
+  .resumo-modal .app-bar{position:static;justify-content:space-between;}
+  .resumo-modal .close-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .resumo-modal .body{flex:1;min-height:0;overflow-y:auto;}
+  .sec{padding:32px 0 0;display:flex;flex-direction:column;gap:24px;}
+  .sec-heading{margin:0;padding:0 16px;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+  .produto{padding:0 16px 32px;display:flex;flex-direction:column;gap:24px;}
+  .produto .text{display:flex;flex-direction:column;gap:16px;}
+  .produto .icon-wifi{color:var(--red);}
+  .produto .title{display:flex;flex-direction:column;gap:8px;}
+  .produto h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:20px;line-height:1.3;}
+  .produto .rotulo{margin:4px 0 0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .checklist li{display:flex;align-items:center;gap:4px;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist i{font-size:16px;color:var(--green-text);flex-shrink:0;}
+  .beneficios{display:flex;flex-direction:column;gap:4px;}
+  .beneficios .lbl{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .produto .preco{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+  .btn-outline{align-self:flex-start;padding:8px 24px;border:1px solid var(--red);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:16px;line-height:1.3;color:var(--red);background:var(--white);}
+  @media (hover:hover){.btn-outline:hover{background:#fff5f4;}}
+
+  .fid-row{display:flex;align-items:flex-start;gap:16px;padding:32px 16px;cursor:pointer;}
+  .fid-row .ic{flex-shrink:0;color:#005c66;}
+  .fid-row .infos{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+  .fid-row .head{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--green-text);}
+  .fid-row .desc{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .fid-row .desc strong{font-weight:700;}
+  .fid-row.is-off .ic{color:var(--warn-text);}
+  .fid-row.is-off .head{color:var(--warn-text);}
+  .switch{position:relative;width:44px;height:24px;flex-shrink:0;border-radius:var(--radius-pill);background:#005c66;transition:background .2s;}
+  .switch::after{content:"";position:absolute;top:4px;left:24px;width:16px;height:16px;border-radius:8px;background:var(--white);transition:left .2s cubic-bezier(0.2,0,0,1);}
+  .switch[aria-checked="false"]{background:var(--gray-line);}
+  .switch[aria-checked="false"]::after{left:4px;}
+
+  .acc-head{width:100%;padding:32px 16px;display:flex;align-items:center;gap:16px;text-align:left;background:var(--white);font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .acc-head span:first-child{flex:1;min-width:0;}
+  .acc-body{padding:0 16px 32px;display:flex;flex-direction:column;gap:32px;}
+  .acc-item{display:flex;flex-direction:column;gap:8px;}
+  .acc-item .chip{width:32px;height:32px;border-radius:var(--radius-xs);display:flex;align-items:center;justify-content:center;background:var(--green-bg);color:var(--green-text);}
+  .acc-item .chip.warn{background:var(--warn-bg);color:var(--warn-text);}
+  .acc-item .chip i{font-size:16px;}
+  .acc-item .t{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .acc-item .d{margin:4px 0 0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .acc-item .marcas{margin-top:0;}
+
+  .valores{padding:0 16px 32px;display:flex;flex-direction:column;gap:8px;}
+  .valores .row{display:flex;gap:16px;font-size:12px;line-height:1.3;}
+  .valores .k{flex:1;color:var(--gray-dark);}
+  .valores .v{font-weight:500;text-align:right;white-space:nowrap;}
+  .total{display:flex;gap:4px;padding:32px 16px 0;}
+  .total .k{flex:1;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+  .total .pv{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;}
+  .total .big{font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+  .total .sub{font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .total .sub b{font-weight:500;color:var(--ink);}
+  .total .sub + .sub{margin-top:4px;}
+  .cta{padding:32px 16px;}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea">
+    <div class="app-bar">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Voltar">
+        <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+      <h1 id="appBarTitle"></h1>
+    </div>
+
+    <div class="topo">
+      <div class="heading">
+        <i class="icon-wifi mdn-Icon-wifi mdn-Icon--md" aria-hidden="true"></i>
+        <p class="eyebrow" id="planEyebrow"></p>
+        <h2 id="planTitle"></h2>
+      </div>
+      <p class="sub" id="planSubtitle"></p>
+    </div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <div class="info-block col">
+      <div class="heading">
+        <span class="tag-ok"><i class="mdn-Icon-check-circulo" aria-hidden="true"></i>Plano disponível</span>
+        <h3 class="green">Este plano tem cobertura para sua localização.</h3>
+      </div>
+      <div class="local-card">
+        <p id="localizacao"></p>
+        <i class="mdn-Icon-localizacao mdn-Icon--md" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="info-block">
+      <button type="button" class="link-arrow" id="mudarLocalBtn">
+        <span>Mudar localização</span>
+        <i class="mdn-Icon-direita mdn-Icon--sm" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <div id="detalhesSection">
+      <div class="info-block col">
+        <p class="eyebrow">Descrição do produto</p>
+        <p class="text" id="descricao"></p>
+      </div>
+      <div id="caracteristicas"></div>
+      <div class="info-block" id="verMaisWrap">
+        <button type="button" class="btn-primary sm" id="verMaisBtn">Ver mais detalhes</button>
+      </div>
+    </div>
+
+    <div id="appsSection">
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+      <div class="info-block col">
+        <div class="heading">
+          <p class="eyebrow">Exclusivos para você</p>
+          <h3>Apps inclusos na franquia</h3>
+        </div>
+        <p class="text" style="margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark)" id="textoApps"></p>
+        <div class="marcas" id="apps"></div>
+        <button type="button" class="btn-primary md" id="verBeneficiosBtn">Ver todos os benefícios</button>
+      </div>
+    </div>
+
+    <div id="pagamentoSection">
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+      <div class="info-block col" style="padding-bottom:0">
+        <div class="heading">
+          <p class="eyebrow">Formas de pagamento</p>
+          <h3>Escolha como você prefere realizar o pagamento da fatura</h3>
+        </div>
+      </div>
+      <div id="pagamentos"></div>
+    </div>
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+  </div>
+
+  <div class="cart" id="cart">
+    <div class="row">
+      <div class="totals">
+        <span class="lbl">Valor total</span>
+        <span id="cartTotal"></span>
+      </div>
+      <div class="cart-btn" aria-label="Carrinho">
+        <div class="circle"><i class="mdn-Icon-carrinho mdn-Icon--md" aria-hidden="true"></i></div>
+        <span class="badge" id="cartCount">1</span>
+      </div>
+    </div>
+    <button type="button" class="btn-sale" id="continuarBtn">Continuar</button>
+  </div>
+
+
+  <div class="resumo-modal" id="resumoModal" aria-hidden="true">
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+    <div class="app-bar">
+      <h1>Resumo do pedido</h1>
+      <button type="button" class="close-btn" id="resumoFechar" aria-label="Fechar">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="body" id="resumoBody">
+      <div class="sec">
+        <p class="sec-heading">Produtos</p>
+        <div class="produto" id="rProduto"></div>
+      </div>
+
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+      <div class="sec" style="gap:24px">
+        <p class="sec-heading">Fidelidade</p>
+        <div>
+          <div class="fid-row" id="fidRow">
+            <i class="ic mdn-Icon-estrela-preenchida mdn-Icon--md" id="fidIcone" aria-hidden="true"></i>
+            <div class="infos">
+              <p class="head" id="fidHead"></p>
+              <p class="desc" id="fidDesc"></p>
+            </div>
+            <button type="button" class="switch" id="fidSwitch" role="switch" aria-checked="true" aria-label="Fidelidade"></button>
+          </div>
+          <div class="divider"></div>
+          <button type="button" class="acc-head" id="accBtn" aria-expanded="false">
+            <span>Benefícios de internet para sua casa</span>
+            <span class="mdn-Icon-baixo mdn-Icon--md" id="accChev" aria-hidden="true"></span>
+          </button>
+          <div class="acc-body" id="accBody" hidden></div>
+        </div>
+      </div>
+
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+      <div class="sec" style="gap:24px">
+        <p class="sec-heading">Descrição dos valores</p>
+        <div class="valores" id="rValores"></div>
+      </div>
+      <div class="divider"></div>
+      <div class="total">
+        <span class="k">Total</span>
+        <div class="pv" id="rTotal"></div>
+      </div>
+      <div class="cta"><button type="button" class="btn-sale" id="rContinuar">Continuar</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const $ = (id) => document.getElementById(id);
+  const produtoId = new URLSearchParams(location.search).get('produto');
+  // Fallback: nunca deixar a tela sem dado (mesmo padrão de selecao-endereco.html)
+  const produto = (catalog.produtos && catalog.produtos[produtoId])
+    || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]];
+  const pagina = catalog.paginas[produto.paginaId];
+  // Produto ainda sem linha em "Detalhes do produto": monta o mínimo com o que já existe.
+  const d = produto.detalhe || {
+    titulo: produto.tituloConfirmacao || produto.nome, descricao: '', textoApps: '',
+    apps: produto.marcas, caracteristicas: []
+  };
+
+  const brl = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // ===== Cabeçalho =====
+  $('appBarTitle').textContent = pagina.barraSuperiorEndereco;
+  $('planEyebrow').textContent = pagina.barraSuperiorEndereco;
+  $('planTitle').textContent = d.titulo;
+  $('planSubtitle').textContent = pagina.subtituloEndereco;
+
+  // ===== Localização: cidade/UF - CEP do endereço escolhido na etapa anterior =====
+  // O endereço vem como texto ("..., BAIRRO - CIDADE/UF - CEP: 00000-000");
+  // extraímos cidade, UF e CEP do final da string.
+  function formatarLocalizacao(texto) {
+    const m = (texto || '').match(/([^\/-]+?)\s*\/\s*([A-Za-z]{2})\s*-\s*CEP:?\s*(\d{5}-?\d{3})\s*$/);
+    if (!m) return '';
+    const cep = m[3].length === 8 ? m[3].slice(0, 5) + '-' + m[3].slice(5) : m[3];
+    // Figma mostra "São Paulo/SP - 04709-110": cidade capitalizada, UF em maiúsculas.
+    const cidade = m[1].trim().toLowerCase()
+      .replace(/(^|\s)(\S)/g, (x, sp, c) => sp + c.toUpperCase())
+      .replace(/\s(De|Da|Do|Das|Dos|E)(?=\s)/g, (x) => x.toLowerCase());
+    return `${cidade}/${m[2].toUpperCase()} - ${cep}`;
+  }
+  let confirmado = null;
+  try { confirmado = JSON.parse(sessionStorage.getItem('enderecoConfirmado') || 'null'); } catch (e) {}
+  // Aberta direto (sem passar pela jornada): usa o primeiro endereço disponível do catálogo.
+  const enderecoTexto = confirmado ? confirmado.endereco
+    : (catalog.enderecos.find((e) => e.disponivel) || {}).endereco;
+  $('localizacao').textContent = formatarLocalizacao(enderecoTexto);
+
+  // ===== Descrição + características =====
+  $('descricao').textContent = d.descricao;
+  $('detalhesSection').querySelector('.info-block.col').hidden = !d.descricao;
+  $('caracteristicas').innerHTML = d.caracteristicas.map((c) => `
+    <div class="divider"></div>
+    <div class="feature">
+      <div class="ic"><i class="mdn-Icon-${c.icone} mdn-Icon--md" aria-hidden="true"></i></div>
+      <div class="tx">
+        <p class="t">${c.titulo}</p>
+        ${c.texto ? `<p class="d">${c.texto}</p>` : ''}
+      </div>
+    </div>`).join('');
+
+  // ===== Apps inclusos =====
+  $('appsSection').hidden = !(d.apps && d.apps.length);
+  $('textoApps').textContent = d.textoApps;
+  $('textoApps').hidden = !d.textoApps;
+  $('apps').innerHTML = (d.apps || []).map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('');
+
+  // ===== Formas de pagamento (por página) =====
+  const pagamentos = pagina.pagamento || [];
+  $('pagamentoSection').hidden = pagamentos.length === 0;
+  // Sem divider antes do primeiro item (no Figma ele encosta no título da seção)
+  $('pagamentos').innerHTML = pagamentos.map((p, i) => `
+    ${i ? '<div class="divider"></div>' : ''}
+    <div class="feature">
+      <div class="ic"><i class="mdn-Icon-${p.icone} mdn-Icon--md" aria-hidden="true"></i></div>
+      <div class="tx">
+        <p class="t no-desc">${p.titulo}</p>
+        ${p.descricao ? `<p class="d">${p.descricao}</p>` : ''}
+      </div>
+    </div>`).join('');
+  // Título de item sem descrição fica centralizado; os com descrição usam a fonte AMX igual ao Figma
+  document.querySelectorAll('#pagamentos .t').forEach((t) => t.classList.add('no-desc'));
+
+  // ===== Carrinho (1 produto por jornada) =====
+  $('cartTotal').textContent = `R$ ${brl(produto.preco)} / mês`;
+  $('cartCount').textContent = '1';
+
+  function showToast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('is-visible');
+    clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('is-visible'), 2200);
+  }
+  // Voltar (breadcrumb): etapa anterior. Sem histórico (aberta direto), cai na seleção de endereço.
+  $('backBtn').addEventListener('click', () => {
+    if (history.length > 1) history.back();
+    else location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produto.id);
+  });
+  $('mudarLocalBtn').addEventListener('click', () => {
+    location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produto.id);
+  });
+
+
+  // ===== Modal "Resumo do pedido" =====
+  // Sem linha na aba "Resumo do pedido": monta o mínimo com o que já existe.
+  const r = produto.resumo || {
+    titulo: produto.nome, rotulo: pagina.barraSuperiorEndereco.toUpperCase(), itens: [],
+    beneficios: d.apps || [], instalacao: 'Grátis', fidelidadeMeses: 12, taxaAdesao: 540
+  };
+  const moeda = (v) => 'R$ ' + brl(v);
+  const fidSwitch = $('fidSwitch');
+  const modal = $('resumoModal');
+  const marcasHtml = (l) => `<div class="marcas">${l.map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('')}</div>`;
+
+  $('rProduto').innerHTML = `
+    <div class="text">
+      <div class="title">
+        <i class="icon-wifi mdn-Icon-wifi mdn-Icon--md" aria-hidden="true"></i>
+        <div><h2>${r.titulo}</h2><p class="rotulo">${r.rotulo}</p></div>
+      </div>
+      ${r.itens.length ? `<ul class="checklist">${r.itens.map((t) =>
+        `<li><i class="mdn-Icon-check" aria-hidden="true"></i><span>${t}</span></li>`).join('')}</ul>` : ''}
+      ${r.beneficios.length ? `<div class="beneficios"><p class="lbl">Benefícios inclusos</p>${marcasHtml(r.beneficios)}</div>` : ''}
+      <p class="preco">${moeda(produto.preco)} / mês</p>
+    </div>
+    <button type="button" class="btn-outline" id="rDetalhes">Detalhes do produto</button>`;
+
+  // Tudo que muda com/sem fidelidade: linha do toggle, acordeão e valores.
+  function renderResumo() {
+    const fid = fidSwitch.getAttribute('aria-checked') === 'true';
+    const meses = r.fidelidadeMeses;
+    const prazo = meses === 12 ? '1 ano' : meses + ' meses';
+
+    $('fidRow').classList.toggle('is-off', !fid);
+    $('fidIcone').className = 'ic ' + (fid ? 'mdn-Icon-estrela-preenchida' : 'mdn-Icon-circulo-fechar') + ' mdn-Icon--md';
+    $('fidHead').textContent = fid ? 'Fidelidade' : 'Sem fidelidade';
+    $('fidDesc').innerHTML = fid
+      ? `Economize com a fidelidade<br><strong>(${prazo} de contrato)</strong>.`
+      : 'Os melhores benefícios só estão <strong>disponíveis com fidelidade</strong>.';
+
+    // Acordeão (conteúdo muda com a fidelidade)
+    $('accBody').innerHTML = fid
+      ? `<div class="acc-item"><span class="chip"><i class="mdn-Icon-dinheiro-cifrao" aria-hidden="true"></i></span>
+           <div><p class="t">Sem taxa de adesão</p><p class="d">Economize ${moeda(r.taxaAdesao)} da taxa de adesão</p></div></div>
+         ${r.beneficios.length ? `<div class="acc-item"><p class="t">Assinatura inclusa</p>${marcasHtml(r.beneficios)}</div>` : ''}`
+      : `<div class="acc-item"><span class="chip warn"><i class="mdn-Icon-dinheiro-cifrao" aria-hidden="true"></i></span>
+           <div><p class="t">Sem taxa de adesão</p><p class="d">Taxa de adesão de ${moeda(r.taxaAdesao)} no 1º mês</p></div></div>`;
+
+    // Valores
+    const mensal = produto.preco;
+    $('rValores').innerHTML = `
+      <div class="row"><span class="k">Valor mensal</span><span class="v">${moeda(mensal)}</span></div>
+      <div class="row"><span class="k">Instalação</span><span class="v">${r.instalacao}</span></div>
+      ${fid ? '' : `<div class="row"><span class="k">Adesão na primeira fatura</span><span class="v">${moeda(r.taxaAdesao)}</span></div>`}`;
+    // Sem fidelidade: 1º mês = plano + adesão; do 2º mês em diante, só o valor mensal.
+    $('rTotal').innerHTML = fid
+      ? `<span class="big">${moeda(mensal)}/mês</span><span class="sub">Fidelizado por ${meses} meses</span>`
+      : `<span class="sub">Valor do 1º mês: <b>${moeda(mensal + r.taxaAdesao)}.</b></span>
+         <span class="sub">A partir do 2º mês:</span>
+         <span class="big">${moeda(mensal)}/mês</span>`;
+  }
+
+  function setAcordeao(aberto) {
+    $('accBtn').setAttribute('aria-expanded', String(aberto));
+    $('accBody').hidden = !aberto;
+    $('accChev').className = (aberto ? 'mdn-Icon-cima' : 'mdn-Icon-baixo') + ' mdn-Icon--md';
+  }
+  $('accBtn').addEventListener('click', () => setAcordeao($('accBtn').getAttribute('aria-expanded') !== 'true'));
+
+  fidSwitch.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fidSwitch.setAttribute('aria-checked', String(fidSwitch.getAttribute('aria-checked') !== 'true'));
+    renderResumo();
+  });
+  $('fidRow').addEventListener('click', () => fidSwitch.click());
+
+  // Abre sempre com fidelidade ativada e acordeão fechado.
+  function abrirResumo() {
+    fidSwitch.setAttribute('aria-checked', 'true');
+    setAcordeao(false);
+    renderResumo();
+    $('resumoBody').scrollTop = 0;
+    modal.setAttribute('aria-hidden', 'false');
+    modal.classList.add('is-open');
+  }
+  function fecharResumo() {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+  $('continuarBtn').addEventListener('click', abrirResumo);
+  document.querySelector('.cart-btn').addEventListener('click', abrirResumo);
+  document.querySelector('.cart-btn').setAttribute('role', 'button');
+  document.querySelector('.cart-btn').setAttribute('tabindex', '0');
+  $('verMaisBtn').addEventListener('click', abrirResumo);
+  $('verBeneficiosBtn').addEventListener('click', abrirResumo);
+  $('resumoFechar').addEventListener('click', fecharResumo);
+  $('rDetalhes').addEventListener('click', fecharResumo); // volta pra página de produto
+  $('rContinuar').addEventListener('click', () => { try { sessionStorage.setItem('fidelidade', fidSwitch.getAttribute('aria-checked') === 'true' ? 'com' : 'sem'); } catch (e) {} location.href = 'checkout.html?produto=' + encodeURIComponent(produto.id); });
+
+  // O carrinho é fixo (position:absolute) por cima do fim da tela — reserva o espaço
+  // medindo a altura real dele, pra o último bloco nunca ficar escondido.
+  function ajustarEspacoRodape() {
+    $('scrollArea').style.paddingBottom = ($('cart').offsetHeight + 16) + 'px';
+  }
+  ajustarEspacoRodape();
+  window.addEventListener('resize', ajustarEspacoRodape);
+</script>
+</body>
+</html>

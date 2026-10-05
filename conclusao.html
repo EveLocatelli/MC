@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concluído · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --bg-light:#f8f8f8;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:0;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Divider Section — separador entre blocos =====
+     Estrutura real do Figma: duas peças brancas de 6px com 4px de GAP entre
+     elas (não coladas) — é esse gap que deixa o fundo cinza do container
+     visível como uma linha sólida de ~4px; a versão anterior (::before/::after
+     encostados, sem gap) cobria o cinza por completo e a linha sumia. */
+  .divider-section{
+    height:16px;
+    background:var(--gray-line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .divider-section .piece{
+    height:6px;
+    background:var(--white);
+  }
+  .divider-section .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .divider-section .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+
+  /* ===== Toast simples (ações ainda sem tela final) ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:100px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:30;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+
+  .app-bar{justify-content:space-between;}
+  .app-bar h1{flex:1;min-width:0;}
+  .app-bar .close-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .divider{height:1px;background:var(--gray-line);flex-shrink:0;}
+  .toast{bottom:32px;}
+
+  .eyebrow{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+  .h3{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:20px;line-height:1.3;color:var(--ink);}
+  .hero{padding:32px 16px;display:flex;flex-direction:column;gap:8px;}
+  .hero h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:28px;line-height:1.3;}
+  .hero p{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .sec-head{padding:32px 16px 0;display:flex;flex-direction:column;gap:12px;}
+
+  /* Próximos passos / Instalação: bloco com ícone redondo */
+  .passo{padding:32px 16px;display:flex;gap:24px;align-items:flex-start;}
+  .passo .ic{width:72px;height:72px;flex-shrink:0;border:1px solid var(--gray-line);border-radius:var(--radius-pill);display:flex;align-items:center;justify-content:center;}
+  .passo .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;font-size:16px;line-height:1.3;}
+  .passo .tit{margin:0;font-family:'AMX',sans-serif;font-weight:500;color:var(--ink);}
+  .passo .tx p{margin:0;color:var(--gray-dark);}
+  .passo .tx p.forte{color:var(--ink);}
+  .passo .tx b{font-weight:700;}
+  .bloco{padding:32px 16px;display:flex;flex-direction:column;gap:12px;font-size:16px;line-height:1.3;}
+  .bloco .tit{margin:0;font-family:'AMX',sans-serif;font-weight:500;color:var(--ink);}
+  .bloco .tx{color:var(--gray-dark);}
+  .bloco .tx p{margin:0;overflow-wrap:anywhere;}
+  .bloco .tx p + p{margin-top:16px;}
+  .bloco .tx b{font-weight:700;}
+
+  /* Produto */
+  .produto{padding:32px 16px 32px;display:flex;flex-direction:column;gap:16px;}
+  .produto .icon-wifi{color:var(--red);}
+  .produto .pt{display:flex;flex-direction:column;gap:4px;}
+  .produto h3{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:20px;line-height:1.3;}
+  .produto .sub{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .checklist li{display:flex;align-items:center;gap:4px;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist i{font-size:16px;color:var(--green-text);flex-shrink:0;}
+  .benef{display:flex;flex-direction:column;gap:4px;}
+  .benef .lbl{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .marcas{display:flex;align-items:center;}
+  .marcas img{width:32px;height:32px;display:block;margin-right:-4px;}
+  .marcas img:last-child{margin-right:0;}
+  .preco{margin:0;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+
+  .campo{padding:32px 16px;display:flex;flex-direction:column;gap:8px;line-height:1.3;color:var(--gray-dark);}
+  .campo .v{margin:0;font-size:16px;}
+  .taxas{padding:32px 16px;display:flex;flex-direction:column;gap:8px;}
+  .linha{display:flex;gap:16px;align-items:flex-start;font-size:16px;line-height:1.3;}
+  .linha .k{flex:1;min-width:0;color:var(--gray-dark);display:flex;align-items:center;gap:4px;}
+  .linha .k i{font-size:16px;}
+  .linha .v{font-weight:700;color:var(--ink);text-align:right;white-space:nowrap;}
+  .total{padding:32px 16px;display:flex;gap:4px;align-items:flex-start;}
+  .total .k{font-family:'AMX',sans-serif;font-weight:500;font-size:24px;line-height:1.3;white-space:nowrap;}
+  .total .pv{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;}
+  .total .big{font-family:'AMX',sans-serif;font-weight:500;font-size:24px;line-height:1.3;}
+  .total .sm{font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .num{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .copia{background:var(--bg-light);border-radius:var(--radius-sm);padding:24px;display:flex;gap:24px;align-items:center;}
+  .copia span{flex:1;min-width:0;font-weight:500;font-size:16px;line-height:1.3;overflow-wrap:anywhere;}
+  .copia button{display:flex;flex-shrink:0;color:var(--ink);}
+  .anatel{background:var(--bg-light);border-radius:8px;padding:24px;display:flex;gap:8px;align-items:flex-start;color:var(--gray-dark);}
+  .anatel i{font-size:21px;flex-shrink:0;}
+  .anatel .t1{font-size:16px;line-height:1.3;}
+  .anatel .t1 b{font-size:20px;font-weight:700;}
+  .anatel .t2{margin:3px 0 0;font-size:12px;line-height:1.3;}
+  .anatel .t2 a{color:#005c66;text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea">
+    <div class="app-bar">
+      <h1>Concluído!</h1>
+      <button type="button" class="close-btn" id="closeBtn" aria-label="Fechar">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="hero">
+      <h2 id="saudacao"></h2>
+      <p>Seu pedido já está em análise.</p>
+    </div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <section>
+      <div class="sec-head"><p class="eyebrow">Próximos passos</p><p class="h3">Como vai funcionar agora?</p></div>
+      <div class="passo">
+        <div class="ic"><i class="mdn-Icon-e-mail mdn-Icon--md" aria-hidden="true"></i></div>
+        <div class="tx">
+          <p class="tit">1. Confirmação</p>
+          <p>Após a análise do seu pedido, confirmaremos os próximos passos através dos nossos canais: <b>e-mail, SMS</b> ou <b>WhatsApp</b>.</p>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="passo">
+        <div class="ic"><i class="mdn-Icon-calendario mdn-Icon--md" aria-hidden="true"></i></div>
+        <div class="tx">
+          <p class="tit">2. Instalação da Internet</p>
+          <p>O técnico chegará à sua casa no dia agendado para fazer a instalação da internet. Você poderá acompanhar tudo pelo app.</p>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="passo">
+        <div class="ic"><i class="mdn-Icon-dinheiro-cifrao mdn-Icon--md" aria-hidden="true"></i></div>
+        <div class="tx">
+          <p class="tit">3. Fatura</p>
+          <p class="forte">O valor da sua primeira fatura será proporcional, contando da instalação até o fechamento.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <section>
+      <div class="sec-head"><p class="eyebrow">Resumo da compra</p><p class="h3" id="dataPedido"></p></div>
+      <div class="produto" id="produto"></div>
+      <div class="divider"></div>
+      <div class="campo"><p class="eyebrow">Fidelidade</p><p class="v" id="fidelidade"></p></div>
+      <div class="divider"></div>
+      <div class="campo"><p class="eyebrow">Vencimento da fatura</p><p class="v" id="vencimento"></p></div>
+      <div class="divider"></div>
+      <div class="taxas">
+        <p class="eyebrow">Taxas e adicionais</p>
+        <div class="linha"><span class="k">Valor mensal</span><span class="v" id="tMensal"></span></div>
+        <div class="linha"><span class="k">Instalação</span><span class="v" id="tInstalacao"></span></div>
+        <div class="linha"><span class="k">Adesão <i class="mdn-Icon-circulo-i" aria-hidden="true"></i></span><span class="v" id="tAdesao"></span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="total">
+        <span class="k">Total</span>
+        <div class="pv"><span class="big" id="totalValor"></span><span class="sm" id="totalSub"></span></div>
+      </div>
+      <div class="divider"></div>
+      <div class="num">
+        <p class="eyebrow">Número do pedido</p>
+        <div class="copia">
+          <span id="numeroPedido"></span>
+          <button type="button" id="copiarBtn" aria-label="Copiar número do pedido"><i class="mdn-Icon-quadrados-copiar mdn-Icon--md" aria-hidden="true"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <section>
+      <div class="sec-head"><p class="eyebrow">Instalação</p><p class="h3">Endereço de instalação</p></div>
+      <div class="bloco">
+        <p class="tit">Endereço</p>
+        <div class="tx"><p><b id="endLinha"></b></p><p id="endRef" hidden></p></div>
+      </div>
+      <div class="divider"></div>
+      <div class="bloco">
+        <p class="tit">Data</p>
+        <div class="tx"><p id="instDia"></p><p id="instPeriodo"></p></div>
+      </div>
+      <div class="divider"></div>
+      <div class="num">
+        <p class="eyebrow">Código da sua oferta</p>
+        <div class="anatel">
+          <i class="mdn-Icon-circulo-i" aria-hidden="true"></i>
+          <div>
+            <div class="t1">O código de etiqueta padrão da sua oferta é: <b id="codigoOferta"></b></div>
+            <p class="t2">Para saber mais sobre a documentação do seu plano registrado na Anatel, <a href="#" id="anatelLink">acesse aqui</a>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <div class="divider-section"><div class="piece piece--top"></div></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const $ = (id) => document.getElementById(id);
+  const brl = (v) => v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const moeda = (v) => 'R$ ' + brl(v);
+
+  // Dados do pedido vindos da jornada (checkout). Aberta direto: usa valores de exemplo.
+  let ped = null;
+  try { ped = JSON.parse(sessionStorage.getItem('pedidoConcluido') || 'null'); } catch (e) {}
+  const hoje = new Date(); const dois = (n) => String(n).padStart(2, '0');
+  const idProduto = (new URLSearchParams(location.search).get('produto')) || (ped && ped.produtoId);
+  const produto = (catalog.produtos && catalog.produtos[idProduto])
+    || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]];
+  const pagina = catalog.paginas[produto.paginaId];
+  const r = produto.resumo || { fidelidadeMeses: 12, taxaAdesao: 540, instalacao: 'Grátis' };
+  const c = produto.conclusao || { plano: pagina.barraSuperiorEndereco, itens: [], globoplay: [], beneficios: [], servicos: [], codigoOferta: '' };
+  ped = ped || {
+    nome: (catalog.cliente || {}).nome || 'Cliente', endereco: '', referencia: '', dia: '', periodo: '', horario: '',
+    forma: 'boleto', fatura: 'email', vencimento: (catalog.checkoutPagamento || {}).diasVencimento ? catalog.checkoutPagamento.diasVencimento[0] : 5,
+    fidelidade: 'com', dataPedido: `${dois(hoje.getDate())}/${dois(hoje.getMonth() + 1)}/${hoje.getFullYear()}`,
+    numero: '',
+  };
+
+  // Saudação com o primeiro nome do cliente
+  $('saudacao').textContent = `Pronto ${(ped.nome || '').trim().split(/\s+/)[0]}!`;
+  $('dataPedido').textContent = `Pedido feito em ${ped.dataPedido}`;
+
+  // Produto
+  const marcas = (l) => l.map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('');
+  const bloco = (rotulo, lista) => lista.length ? `<div class="benef"><p class="lbl">${rotulo}</p><div class="marcas">${marcas(lista)}</div></div>` : '';
+  $('produto').innerHTML = `
+    <div>
+      <i class="icon-wifi mdn-Icon-wifi mdn-Icon--md" aria-hidden="true" style="display:block;margin-bottom:8px"></i>
+      <div class="pt"><h3></h3><p class="sub"></p></div>
+    </div>
+    ${c.itens.length ? `<ul class="checklist">${c.itens.map(() => `<li><i class="mdn-Icon-check" aria-hidden="true"></i><span></span></li>`).join('')}</ul>` : ''}
+    ${bloco('Globoplay incluso:', c.globoplay)}
+    ${bloco('Benefícios inclusos:', c.beneficios)}
+    ${bloco('Serviços exclusivos para ler, assistir vídeos e se manter atualizado:', c.servicos)}
+    <p class="preco">${moeda(produto.preco)} / mês</p>`;
+  $('produto').querySelector('h3').textContent = c.plano;
+  $('produto').querySelector('.sub').textContent = produto.tituloConfirmacao || produto.nome;
+  $('produto').querySelectorAll('.checklist li span').forEach((el, i) => { el.textContent = c.itens[i]; });
+
+  // Fidelidade, vencimento, taxas e total (variam com as escolhas do usuário)
+  const fid = ped.fidelidade !== 'sem';
+  const meses = r.fidelidadeMeses || 12;
+  $('fidelidade').textContent = fid ? `${meses} meses (${meses === 12 ? '1 ano' : meses + ' meses'} de contrato)` : 'Sem fidelidade';
+  $('vencimento').textContent = `Vencimento todo dia ${ped.vencimento}`;
+  $('tMensal').textContent = moeda(produto.preco);
+  $('tInstalacao').textContent = r.instalacao || 'Grátis';
+  $('tAdesao').textContent = fid ? 'Grátis' : moeda(r.taxaAdesao || 0);
+  $('totalValor').textContent = `${moeda(produto.preco)}/mês`;
+  const formaTxt = ped.forma === 'debito' ? 'Débito automático' : 'Boleto';
+  const faturaTxt = ped.fatura === 'email' ? 'fatura digital' : 'fatura impressa';
+  $('totalSub').innerHTML = `${formaTxt} + ${faturaTxt}<br>${fid ? `Fidelizado por ${meses} meses` : 'Sem fidelidade'}`;
+
+  // Número do pedido (gerado no checkout) e cópia
+  $('numeroPedido').textContent = ped.numero || `${hoje.getFullYear()}${dois(hoje.getMonth() + 1)}${dois(hoje.getDate())}${dois(hoje.getHours())}${dois(hoje.getMinutes())}${dois(hoje.getSeconds())}000`;
+  function showToast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('is-visible');
+    clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('is-visible'), 2200);
+  }
+  $('copiarBtn').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('numeroPedido').textContent); showToast('Número do pedido copiado'); }
+    catch (e) { showToast('Não foi possível copiar'); }
+  });
+
+  // Instalação
+  $('endLinha').textContent = ped.endereco;
+  $('endRef').textContent = ped.referencia || ''; $('endRef').hidden = !ped.referencia;
+  $('instDia').textContent = ped.dia;
+  const hr = ped.horario ? ped.horario.charAt(0).toLowerCase() + ped.horario.slice(1) : '';
+  $('instPeriodo').textContent = `No período da ${(ped.periodo || '').toLowerCase()}\n${hr}`;
+  $('instPeriodo').style.whiteSpace = 'pre-line';
+  $('codigoOferta').textContent = c.codigoOferta;
+  $('anatelLink').addEventListener('click', (e) => { e.preventDefault(); showToast('Documentação da Anatel ainda não implementada'); });
+
+  // Fechar: encerra a jornada e volta para a vitrine
+  $('closeBtn').addEventListener('click', () => {
+    ['pedidoConcluido', 'enderecoConfirmado', 'complementosSessao', 'fidelidade'].forEach((k) => sessionStorage.removeItem(k));
+    location.href = 'ofertas-fibra.html';
+  });
+</script>
+</body>
+</html>

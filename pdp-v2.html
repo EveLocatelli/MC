@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --bg-light:#f8f8f8;
+    --yellow:#ffc722;
+    --teal:#005c66;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:0;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Divider Section — separador entre blocos =====
+     Estrutura real do Figma: duas peças brancas de 6px com 4px de GAP entre
+     elas (não coladas) — é esse gap que deixa o fundo cinza do container
+     visível como uma linha sólida de ~4px; a versão anterior (::before/::after
+     encostados, sem gap) cobria o cinza por completo e a linha sumia. */
+  .divider-section{
+    height:16px;
+    background:var(--gray-line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .divider-section .piece{
+    height:6px;
+    background:var(--white);
+  }
+  .divider-section .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .divider-section .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+
+  /* ===== Spinner de carregamento (overlay tela cheia, mesmo padrão de ofertas-fibra.html) ===== */
+  .loading-overlay{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  /* O .mdn-Spinner real do Mondrian nasce como bloqueador de página inteira
+     (position:fixed, height:100vh, width:100%, fundo próprio) — sem isso,
+     ele escapa da moldura do app-frame (fixed ignora overflow:hidden do
+     ancestral) e cobre a tela toda, comendo os cantos arredondados/sombra
+     que simulam o aparelho. Sobrescrevemos pra ele só preencher o overlay. */
+  .loading-overlay .mdn-Spinner{
+    position:static;
+    height:auto;
+    width:auto;
+    background:transparent;
+  }
+
+  /* ===== Toast simples (ações ainda sem tela final) ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:100px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:30;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+
+  .app-bar{padding:24px 16px;}
+  .app-bar .back-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--ink);flex-shrink:0;}
+  .divider{height:1px;background:var(--gray-line);flex-shrink:0;}
+  .toast{bottom:150px;}
+
+  .produto{padding:0 16px 32px;display:flex;flex-direction:column;gap:24px;}
+  .produto .text{display:flex;flex-direction:column;gap:16px;}
+  .produto .icon-wifi{color:var(--red);}
+  .produto .title{display:flex;flex-direction:column;gap:8px;}
+  .produto h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:20px;line-height:1.3;}
+  .produto .rotulo{margin:4px 0 0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
+  .checklist li{display:flex;align-items:center;gap:4px;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .checklist i{font-size:16px;color:var(--green-text);flex-shrink:0;}
+  .benef{display:flex;flex-direction:column;gap:4px;}
+  .benef .lbl{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .marcas{display:flex;align-items:center;}
+  .marcas img{width:32px;height:32px;display:block;margin-right:-4px;}
+  .marcas img:last-child{margin-right:0;}
+  .contrato{margin:0;font-weight:500;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .contrato a{font-weight:700;text-decoration:underline;cursor:pointer;}
+  .link-apps{width:100%;background:var(--bg-light);border-radius:8px;padding:16px;min-height:56px;display:flex;align-items:center;gap:16px;text-align:left;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .link-apps span:first-child{flex:1;min-width:0;}
+  .link-apps i{font-size:20px;flex-shrink:0;}
+
+  /* Fidelidade (toggle) */
+  .fid-row{display:flex;align-items:flex-start;gap:16px;padding:0 16px 32px;cursor:pointer;}
+  .fid-row .ic{flex-shrink:0;color:var(--teal);}
+  .fid-row .infos{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+  .fid-row .head{margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--green-text);}
+  .fid-row .desc{margin:0;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .fid-row .desc strong{font-weight:700;}
+  .fid-row.is-off .ic,.fid-row.is-off .head{color:var(--warn-text);}
+  .switch{position:relative;width:44px;height:24px;flex-shrink:0;border-radius:var(--radius-pill);background:var(--teal);transition:background .2s;}
+  .switch::after{content:"";position:absolute;top:4px;left:24px;width:16px;height:16px;border-radius:8px;background:var(--white);transition:left .2s cubic-bezier(0.2,0,0,1);}
+  .switch[aria-checked="false"]{background:var(--gray-line);}
+  .switch[aria-checked="false"]::after{left:4px;}
+
+  /* Recomendado para */
+  .rec{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .rec .lbl{margin:0;font-weight:700;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;}
+  .tag{background:var(--bg-light);border-radius:4px;padding:4px 8px;display:flex;align-items:center;gap:4px;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .tag i{font-size:16px;}
+  .rec .apoio{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
+
+  /* Acordeão de benefícios */
+  .acc-head{width:100%;padding:24px 16px 0;display:flex;align-items:flex-start;gap:16px;text-align:left;background:var(--white);font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .acc-head span:first-child{flex:1;min-width:0;}
+  .acc-body{padding:32px 16px 24px;display:flex;flex-direction:column;gap:32px;}
+  .acc-item{display:flex;flex-direction:column;gap:8px;}
+  .acc-item .chip{width:32px;height:32px;border-radius:var(--radius-xs);display:flex;align-items:center;justify-content:center;background:var(--green-bg);color:var(--green-text);}
+  .acc-item .chip.warn{background:var(--warn-bg);color:var(--warn-text);}
+  .acc-item .chip i{font-size:16px;}
+  .acc-item .lock{position:relative;width:32px;height:32px;border-radius:var(--radius-pill);background:var(--gray-line);display:flex;align-items:center;justify-content:center;}
+  .acc-item .lock img{position:absolute;left:4px;top:4px;width:24px;height:24px;opacity:.32;}
+  .acc-item .lock i{position:relative;font-size:16px;color:var(--ink);}
+  .acc-item .t{margin:0;font-weight:700;font-size:16px;line-height:1.3;color:var(--ink);}
+  .acc-item .d{margin:4px 0 0;font-size:14px;line-height:1.3;color:var(--gray-dark);}
+  .acc-item .d b{font-weight:700;}
+  .acc-item .marcas img{margin-right:-4px;}
+
+  /* Código da oferta */
+  .cod{padding:32px 16px;display:flex;flex-direction:column;gap:24px;}
+  .cod .eyebrow{margin:0;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+  .anatel{background:var(--bg-light);border-radius:8px;padding:24px;display:flex;gap:8px;align-items:flex-start;color:var(--gray-dark);}
+  .anatel i{font-size:21px;flex-shrink:0;}
+  .anatel .t1{font-size:16px;line-height:1.3;}
+  .anatel .t1 b{font-size:20px;font-weight:700;}
+  .anatel .t2{margin:3px 0 0;font-size:12px;line-height:1.3;}
+  .anatel .t2 a{color:var(--teal);text-decoration:underline;}
+
+  /* Barra fixa com o total */
+  .total-bar{
+    position:absolute;left:0;right:0;bottom:0;z-index:10;background:var(--white);
+    border:1px solid var(--gray-line);border-bottom:none;border-radius:12px 12px 0 0;
+    box-shadow:0 -4px 8px 0 rgba(31,29,29,0.16);padding:24px 16px 24px 16px;display:flex;flex-direction:column;gap:25px;
+  }
+  .total-bar .linha{display:flex;align-items:flex-start;gap:4px;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;}
+  .total-bar .k{flex:1;min-width:0;text-align:left;}
+  .total-bar .pv{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:4px;}
+  .total-bar .sub{display:block;font-family:'Roboto',sans-serif;font-weight:400;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .total-bar .sub b{font-weight:500;color:var(--ink);}
+  .btn-sale{
+    width:100%;padding:16px 32px;border-radius:var(--radius-pill);background:var(--yellow);
+    font-weight:500;font-size:16px;line-height:1;color:var(--ink);text-align:center;transition:filter .2s cubic-bezier(0.2,0,0,1);
+  }
+  @media (hover:hover){.btn-sale:hover{filter:brightness(0.95);}}
+  .btn-sale:active{transform:scale(0.99);}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area" id="scrollArea">
+    <div class="app-bar">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Voltar">
+        <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+      </button>
+      <h1>Plano Claro Fibra</h1>
+    </div>
+
+    <div class="produto" id="produto"></div>
+
+    <div class="fid-row" id="fidRow">
+      <i class="ic mdn-Icon-estrela-preenchida mdn-Icon--md" id="fidIcone" aria-hidden="true"></i>
+      <div class="infos"><p class="head" id="fidHead"></p><p class="desc" id="fidDesc"></p></div>
+      <button type="button" class="switch" id="fidSwitch" role="switch" aria-checked="true" aria-label="Fidelidade"></button>
+    </div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <div class="rec" id="recWrap">
+      <p class="lbl">Recomendado para:</p>
+      <div class="tags" id="tags"></div>
+      <p class="apoio" id="apoio"></p>
+    </div>
+
+    <button type="button" class="acc-head" id="accBtn" aria-expanded="false">
+      <span>Benefícios de internet para sua casa</span>
+      <span class="mdn-Icon-baixo mdn-Icon--md" id="accChev" aria-hidden="true"></span>
+    </button>
+    <div class="acc-body" id="accBody" hidden></div>
+
+    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+    <div class="cod">
+      <p class="eyebrow">Código da sua oferta</p>
+      <div class="anatel">
+        <i class="mdn-Icon-circulo-i" aria-hidden="true"></i>
+        <div>
+          <div class="t1">O código de etiqueta padrão da sua oferta é: <b id="codigoOferta"></b></div>
+          <p class="t2">Para saber mais sobre a documentação do seu plano registrado na Anatel, <a href="#" id="anatelLink">acesse aqui</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="total-bar" id="totalBar">
+    <div class="linha"><span class="k">Total</span><div class="pv" id="totalPv"></div></div>
+    <button type="button" class="btn-sale" id="continuarBtn">Continuar</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const $ = (id) => document.getElementById(id);
+  const produtoId = new URLSearchParams(location.search).get('produto');
+  const produto = (catalog.produtos && catalog.produtos[produtoId])
+    || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]];
+  // Produto sem linhas nas abas de V2/Conclusão: monta o mínimo com o que já existe
+  const c = produto.conclusao || { itens: [], globoplay: [], beneficios: [], servicos: [], codigoOferta: '' };
+  const v = produto.pdpV2 || { rotulo: 'Planos Claro fibra', recomendado: [], textoApoio: '' };
+  const r = produto.resumo || { fidelidadeMeses: 12, taxaAdesao: 540 };
+  const brl = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const moeda = (n) => 'R$ ' + brl(n);
+  const fidSwitch = $('fidSwitch');
+
+  // ===== Produto =====
+  const marcas = (l) => `<div class="marcas">${l.map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('')}</div>`;
+  const bloco = (rotulo, l) => l.length ? `<div class="benef"><p class="lbl">${rotulo}</p>${marcas(l)}</div>` : '';
+  $('produto').innerHTML = `
+    <div class="text">
+      <div class="title">
+        <i class="icon-wifi mdn-Icon-wifi mdn-Icon--md" aria-hidden="true"></i>
+        <div><h2></h2><p class="rotulo"></p></div>
+      </div>
+      ${c.itens.length ? `<ul class="checklist">${c.itens.map(() => '<li><i class="mdn-Icon-check" aria-hidden="true"></i><span></span></li>').join('')}</ul>` : ''}
+      ${bloco('Globoplay incluso:', c.globoplay)}
+      ${bloco('Benefícios inclusos:', c.beneficios)}
+      ${bloco('Serviços exclusivos para ler, assistir vídeos e se manter atualizado:', c.servicos)}
+    </div>
+    <p class="contrato">Você também pode consultar o <a id="contratoLink">Contrato de Prestação de Serviços.</a></p>
+    <button type="button" class="link-apps" id="appsBtn"><span>Detalhes sobre benefícios e serviços</span><i class="mdn-Icon-direita" aria-hidden="true"></i></button>`;
+  $('produto').querySelector('h2').textContent = produto.tituloConfirmacao || produto.nome;
+  $('produto').querySelector('.rotulo').textContent = v.rotulo;
+  $('produto').querySelectorAll('.checklist li span').forEach((el, i) => { el.textContent = c.itens[i]; });
+
+  // ===== Recomendado para =====
+  $('tags').innerHTML = v.recomendado.map(() => '<span class="tag"><i aria-hidden="true"></i><span></span></span>').join('');
+  $('tags').querySelectorAll('.tag').forEach((el, i) => {
+    el.querySelector('i').className = 'mdn-Icon-' + v.recomendado[i].icone;
+    el.querySelector('span').textContent = v.recomendado[i].texto;
+  });
+  $('apoio').textContent = v.textoApoio;
+  $('recWrap').hidden = !v.recomendado.length && !v.textoApoio;
+  $('codigoOferta').textContent = c.codigoOferta;
+
+  // ===== Com / sem fidelidade: linha do toggle, acordeão e total =====
+  const meses = r.fidelidadeMeses || 12;
+  const taxa = r.taxaAdesao || 0;
+  function render() {
+    const fid = fidSwitch.getAttribute('aria-checked') === 'true';
+    try { sessionStorage.setItem('fidelidade', fid ? 'com' : 'sem'); } catch (e) {}
+    $('fidRow').classList.toggle('is-off', !fid);
+    $('fidIcone').className = 'ic ' + (fid ? 'mdn-Icon-estrela-preenchida' : 'mdn-Icon-circulo-fechar') + ' mdn-Icon--md';
+    $('fidHead').textContent = fid ? 'Fidelidade' : 'Sem fidelidade';
+    $('fidDesc').innerHTML = fid
+      ? `Economize com a fidelidade<br><strong>(${meses === 12 ? '1 ano' : meses + ' meses'} de contrato)</strong>.`
+      : 'Os melhores benefícios só estão <strong>disponíveis com fidelidade</strong>.';
+
+    const globo = c.globoplay.length ? c.globoplay : [];
+    $('accBody').innerHTML = fid
+      ? `<div class="acc-item"><span class="chip"><i class="mdn-Icon-dinheiro-cifrao" aria-hidden="true"></i></span>
+           <div><p class="t">Sem taxa de adesão</p><p class="d"><b>Economia de R$${taxa}</b> da taxa de adesão</p></div></div>
+         ${globo.length ? `<div class="acc-item">${marcas(globo)}<div><p class="t">Assinatura inclusa</p><p class="d">Ganhe esta assinatura sem custo adicional</p></div></div>` : ''}
+         ${c.servicos.length ? `<div class="acc-item">${marcas(c.servicos)}<div><p class="t">Exclusivos para você</p><p class="d">Serviços exclusivos que só cliente Claro tem.</p></div></div>` : ''}`
+      : `<div class="acc-item"><span class="chip warn"><i class="mdn-Icon-dinheiro-cifrao" aria-hidden="true"></i></span>
+           <div><p class="t">Taxa de adesão</p><p class="d"><b>Taxa de adesão de R$${taxa}</b> no 1º mês</p></div></div>
+         ${globo.length ? `<div class="acc-item"><span class="lock"><img src="${globo[0].src}" alt=""><i class="mdn-Icon-cadeado" aria-hidden="true"></i></span>
+           <div><p class="t">Sem assinatura inclusa</p><p class="d">Desbloqueie este e mais benefícios com a fidelidade.</p></div></div>` : ''}`;
+
+    // Total: sem fidelidade, o 1º mês soma a taxa de adesão (mesma regra da V1)
+    const mensal = produto.preco;
+    $('totalPv').innerHTML = fid
+      ? `<span>${moeda(mensal)}/mês</span>`
+      : `<div><span class="sub">Valor do 1º mês: <b>${moeda(mensal + taxa)}.</b></span>
+         <span class="sub">Valor do 2º ao ${meses}º mês:</span></div>
+         <span>${moeda(mensal)}/mês</span>`;
+    ajustar();
+  }
+  fidSwitch.addEventListener('click', (e) => {
+    e.stopPropagation();
+    fidSwitch.setAttribute('aria-checked', String(fidSwitch.getAttribute('aria-checked') !== 'true'));
+    render();
+  });
+  $('fidRow').addEventListener('click', () => fidSwitch.click());
+
+  // Acordeão (vem fechado)
+  $('accBtn').addEventListener('click', () => {
+    const aberto = $('accBtn').getAttribute('aria-expanded') === 'true';
+    $('accBtn').setAttribute('aria-expanded', String(!aberto));
+    $('accBody').hidden = aberto;
+    $('accChev').className = (aberto ? 'mdn-Icon-baixo' : 'mdn-Icon-cima') + ' mdn-Icon--md';
+  });
+
+  // ===== Navegação =====
+  function showToast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('is-visible');
+    clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('is-visible'), 2200);
+  }
+  $('backBtn').addEventListener('click', () => { if (history.length > 1) history.back(); else location.href = 'ofertas-fibra.html'; });
+  $('appsBtn').addEventListener('click', () => { location.href = 'servicos-digitais.html?produto=' + encodeURIComponent(produto.id); });
+  $('contratoLink').addEventListener('click', () => showToast('Contrato de Prestação de Serviços ainda não implementado'));
+  $('anatelLink').addEventListener('click', (e) => { e.preventDefault(); showToast('Documentação da Anatel ainda não implementada'); });
+  // Continuar: o endereço já foi escolhido antes desta tela; segue para o checkout (a fidelidade fica guardada)
+  $('continuarBtn').addEventListener('click', () => { location.href = 'checkout.html?produto=' + encodeURIComponent(produto.id); });
+
+  // A barra fixa fica por cima do fim da tela: reserva o espaço medindo a altura real
+  function ajustar() { $('scrollArea').style.paddingBottom = ($('totalBar').offsetHeight + 16) + 'px'; }
+  window.addEventListener('resize', ajustar);
+  render();
+</script>
+</body>
+</html>

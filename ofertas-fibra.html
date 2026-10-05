@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ofertas fibra · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-line:#dbdbdb;
+    --yellow:#ffc722;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9; /* área fora do "aparelho", só pra simulação em desktop */
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) ===== */
+  /* Em telas largas (desktop) isso aparece como um "cartão" central do
+     tamanho de um celular; em telas estreitas (mobile de verdade) ocupa
+     a tela inteira sem moldura/sombra. */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    min-height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow-x:hidden;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      min-height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+      overflow:hidden;
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      min-height:100vh;
+      min-height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO, não é conteúdo do app) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Header da tela (voltar + título) ===== */
+  .screen-header{
+    margin-top:32px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:8px 16px 0;
+  }
+  .screen-header .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .screen-header h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+
+  /* ===== Seção Oferta Exclusiva ===== */
+  .offer-section{
+    padding:24px 0;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .offer-heading{
+    padding:0 16px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .offer-heading h2{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:700;
+    font-size:24px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-heading p{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:14px;
+    line-height:1.3;
+    color:var(--ink);
+    max-width:300px;
+  }
+
+  /* ===== Row de cards (scroll nativo horizontal, mobile) ===== */
+  .offer-cards{
+    display:flex;
+    gap:12px;
+    padding:2px 16px 4px;
+    overflow-x:auto;
+    scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    cursor:grab;
+    user-select:none;
+    /* Sem isso, scroll-snap-align:start no primeiro card ignora o padding-left
+       e alinha a borda do card com a borda do container, comendo o respiro
+       esquerdo que devia bater com o título "Internet para sua casa". */
+    scroll-padding-left:16px;
+  }
+  .offer-cards::-webkit-scrollbar{display:none;}
+  .offer-cards.dragging{
+    cursor:grabbing;
+    scroll-snap-type:none;
+  }
+  .offer-cards.dragging *{
+    pointer-events:none;
+  }
+
+  .offer-card{
+    scroll-snap-align:start;
+    flex:0 0 auto;
+    width:250px;
+    background:var(--white);
+    border:1px solid var(--gray-line);
+    border-radius:var(--radius-sm);
+    padding:24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .offer-card .category{
+    font-family:'AMX',sans-serif;
+    font-weight:400;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .name-desc{
+    display:flex;
+    flex-direction:column;
+  }
+  .offer-card .name{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:700;
+    font-size:20px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .desc{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .tags{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    opacity:0.8;
+  }
+  .offer-card .tags img{
+    width:24px;
+    height:24px;
+    display:block;
+  }
+  .offer-card .price{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .offer-card .price .label{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .price .value{
+    display:flex;
+    align-items:flex-end;
+    gap:4px;
+  }
+  .offer-card .price .currency{
+    font-family:'AMX',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .price .amount{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:20px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .offer-card .price .period{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    padding-bottom:1px;
+  }
+
+  /* ===== Spinner de carregamento (overlay tela cheia) ===== */
+  .loading-overlay{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  /* O .mdn-Spinner real do Mondrian nasce como bloqueador de página inteira
+     (position:fixed, height:100vh, width:100%, fundo próprio) — sem isso,
+     ele escapa da moldura do app-frame (fixed ignora overflow:hidden do
+     ancestral) e cobre a tela toda, comendo os cantos arredondados/sombra
+     que simulam o aparelho. Sobrescrevemos pra ele só preencher o overlay. */
+  .loading-overlay .mdn-Spinner{
+    position:static;
+    height:auto;
+    width:auto;
+    background:transparent;
+  }
+
+  /* V2: link "Mais detalhes" abaixo do Eu quero (texto teal sublinhado, centralizado) */
+  .btn-mais-detalhes{
+    background:none;border:none;padding:0;cursor:pointer;width:100%;
+    font-family:'Roboto',sans-serif;font-weight:500;font-size:14px;line-height:1.3;
+    color:#005c66;text-align:center;text-decoration:underline;
+  }
+  .toast{
+    position:absolute;left:16px;right:16px;bottom:24px;background:var(--ink);color:#fff;
+    font-family:'Roboto',sans-serif;font-size:14px;text-align:center;padding:12px 16px;
+    border-radius:var(--radius-sm);z-index:30;opacity:0;transform:translateY(8px);
+    transition:opacity .2s, transform .2s;pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+  /* Button Sale — pill amarelo, uso restrito a ações próximas de conversão */
+  .btn-sale{
+    background:var(--yellow);
+    border:none;
+    border-radius:var(--radius-pill);
+    height:40px;
+    padding:8px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--ink);
+    transition:filter 0.2s cubic-bezier(0.2,0,0,1), transform 0.15s cubic-bezier(0.05,0.7,0.1,1);
+  }
+  @media (hover:hover){
+    .btn-sale:hover{filter:brightness(0.95);}
+  }
+  .btn-sale:active{transform:scale(0.98);}
+</style>
+</head>
+<body data-pagina-id="ofertas-fibra">
+
+<div class="app-frame">
+
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="screen-header">
+    <button type="button" class="back-btn" aria-label="Voltar" onclick="history.back()">
+      <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-label="seta-esquerda"></span>
+    </button>
+    <h1 id="screenTitle"></h1>
+  </div>
+
+  <section class="offer-section" aria-label="Oferta exclusiva">
+    <div class="offer-heading">
+      <h2 id="offerHeading"></h2>
+      <p id="offerSubtitle"></p>
+    </div>
+
+    <div class="offer-cards" id="offerCards">
+      <!-- Cards renderizados em runtime a partir de app-catalog.js (ver script no fim do arquivo) -->
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="loading-overlay" id="loadingOverlay" hidden>
+    <div class="mdn-Spinner mdn-Spinner--default">
+      <span class="mdn-Icon-claro mdn-Icon--lg" aria-label="Carregando" tabindex="0"></span>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  // ===== Render da página a partir do catálogo (app-catalog.js, gerado da
+  // planilha catalogo-ofertas-TEMPLATE.xlsx por scripts/gen_catalog.py) =====
+  function formatPreco(v) {
+    return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // V2 (flag maisDetalhesNoCard): link "Mais detalhes" no card, abaixo do botão
+  const maisDetalhes = !!(window.APP_VERSION && window.APP_VERSION.flags.maisDetalhesNoCard);
+
+  function renderCard(produto, categoriaLabel) {
+    const tagsHtml = produto.marcas
+      .map((m) => `<img src="${m.src}" alt="${m.nome}">`)
+      .join('\n          ');
+    return `
+      <article class="offer-card" data-produto-id="${produto.id}">
+        <p class="category">${categoriaLabel.toUpperCase()}</p>
+        <div class="name-desc">
+          <p class="name">${produto.nome}</p>
+          <p class="desc">${produto.descricaoCard}</p>
+        </div>
+        <div class="tags" aria-hidden="true">
+          ${tagsHtml}
+        </div>
+        <div class="price">
+          <p class="label">Por apenas</p>
+          <div class="value">
+            <span class="currency">R$</span>
+            <span class="amount">${formatPreco(produto.preco)}</span>
+            <span class="period">/mês</span>
+          </div>
+        </div>
+        <button type="button" class="btn-sale">${produto.textoBotao}</button>
+        ${maisDetalhes ? '<button type="button" class="btn-mais-detalhes">Mais detalhes</button>' : ''}
+      </article>`;
+  }
+
+  function renderPagina() {
+    const catalog = window.APP_CATALOG;
+    const paginaId = document.body.dataset.paginaId;
+    const pagina = catalog && catalog.paginas[paginaId];
+    if (!pagina) {
+      console.error('Página não encontrada no catálogo:', paginaId);
+      return;
+    }
+    document.getElementById('screenTitle').textContent = pagina.titulo;
+    document.getElementById('offerHeading').textContent = pagina.tituloPrincipal;
+    document.getElementById('offerSubtitle').textContent = pagina.subtitulo;
+
+    const cardsHtml = pagina.produtos
+      .map((pid) => catalog.produtos[pid])
+      .filter(Boolean)
+      .map((produto) => renderCard(produto, pagina.categoria))
+      .join('\n');
+    document.getElementById('offerCards').innerHTML = cardsHtml;
+  }
+
+  renderPagina();
+
+  // ===== "Eu quero" -> spinner de 2s -> tela de seleção de endereço =====
+  // Delegado no container (não nos cards individuais) porque os cards são
+  // recriados em runtime pelo renderPagina() acima.
+  function showToast(msg) {
+    const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('is-visible');
+    clearTimeout(showToast._t); showToast._t = setTimeout(() => t.classList.remove('is-visible'), 2200);
+  }
+  document.getElementById('offerCards').addEventListener('click', (e) => {
+    // "Mais detalhes" (V2): abre a tela de detalhes do plano
+    const md = e.target.closest('.btn-mais-detalhes');
+    if (md) {
+      const id = md.closest('.offer-card').dataset.produtoId;
+      window.location.href = 'mais-detalhes.html?produto=' + encodeURIComponent(id || '');
+      return;
+    }
+    const btn = e.target.closest('.btn-sale');
+    if (!btn) return;
+    const card = btn.closest('.offer-card');
+    const produtoId = card && card.dataset.produtoId;
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.hidden = false;
+    setTimeout(() => {
+      window.location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produtoId || '');
+    }, 2000);
+  });
+
+  // Arrastar com o mouse pra rolar carrosséis horizontais — necessário pra
+  // testar o scroll do dedo/touch quando o protótipo é aberto num navegador
+  // de desktop (sem touchpad/touch), já que overflow-x:auto sozinho só
+  // responde a touch ou scroll do trackpad, não a clique-e-arrasto de mouse.
+  function makeDraggable(track) {
+    if (!track) return;
+    let isDown = false;
+    let moved = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+
+    track.addEventListener('mousedown', (e) => {
+      isDown = true;
+      moved = false;
+      startX = e.pageX;
+      startScrollLeft = track.scrollLeft;
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 3) {
+        moved = true;
+        track.classList.add('dragging');
+      }
+      track.scrollLeft = startScrollLeft - dx;
+    });
+    window.addEventListener('mouseup', () => {
+      isDown = false;
+      track.classList.remove('dragging');
+    });
+    track.addEventListener('click', (e) => {
+      if (moved) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+  }
+
+  document.querySelectorAll('.offer-cards').forEach(makeDraggable);
+</script>
+
+</body>
+</html>

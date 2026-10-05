@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protótipo App</title>
+<style>
+  :root{
+    --red:#da291c;
+    --red-dark:#b41e13;
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --bg-page:#f8f8f8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg-page);
+    color:var(--ink);
+  }
+  header{
+    background:linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+    color:#fff;
+    padding:48px 24px;
+    text-align:center;
+  }
+  header h1{margin:0 0 8px;font-size:28px;}
+  header p{margin:0;opacity:0.9;font-size:15px;}
+  .container{max-width:720px;margin:0 auto;padding:40px 24px;}
+  .section-label{font-size:12px;font-weight:700;color:var(--gray-dark);text-transform:uppercase;letter-spacing:0.5px;margin:0 0 16px;}
+  .link-list{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    list-style:none;
+    margin:0 0 40px;
+    padding:0;
+  }
+  .link-list a{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    background:#fff;
+    border:1px solid var(--gray-line);
+    border-radius:12px;
+    padding:20px 24px;
+    text-decoration:none;
+    color:inherit;
+    font-size:16px;
+    font-weight:500;
+    transition:box-shadow 0.2s, transform 0.15s;
+  }
+  .link-list a:hover{box-shadow:0 8px 24px rgba(0,0,0,0.1);transform:translateY(-2px);}
+  .link-list a .arrow{color:var(--red);font-size:18px;flex-shrink:0;}
+
+  /* ===== Seletor de versão da jornada ===== */
+  .versoes{display:flex;flex-direction:column;gap:12px;margin:0 0 16px;}
+  .versao{
+    display:flex;align-items:flex-start;gap:16px;background:#fff;border:1px solid var(--gray-line);
+    border-radius:12px;padding:20px 24px;cursor:pointer;transition:border-color .15s, box-shadow .15s;
+  }
+  .versao:hover{box-shadow:0 8px 24px rgba(0,0,0,0.1);}
+  .versao input{margin:4px 0 0;accent-color:var(--red);width:18px;height:18px;flex-shrink:0;}
+  .versao .nome{font-size:16px;font-weight:600;margin:0 0 4px;}
+  .versao .desc{margin:0;font-size:14px;color:var(--gray-dark);}
+  .versao.is-selected{border-color:var(--red);box-shadow:0 0 0 1px var(--red);}
+  .opcoes{display:flex;align-items:center;gap:8px;margin:0 0 40px;font-size:14px;color:var(--gray-dark);}
+  .opcoes input{accent-color:var(--red);width:16px;height:16px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Protótipo App</h1>
+  <p>Ponto de partida do projeto</p>
+</header>
+
+<div class="container">
+  <p class="section-label">Versão da jornada</p>
+  <div class="versoes" id="versoes"></div>
+  <label class="opcoes"><input type="checkbox" id="mostrarSelo"> Mostrar selo da versão nas telas</label>
+
+  <p class="section-label">Telas</p>
+  <ul class="link-list">
+    <li><a href="ofertas-fibra.html" id="iniciar"><span>Iniciar jornada — <span id="iniciarNome"></span></span> <span class="arrow">→</span></a></li>
+  </ul>
+</div>
+
+<script src="app-versions.js"></script>
+<script>
+  // Escolher a versão grava na sessão; as telas leem em app-versions.js.
+  // Link direto por versão continua funcionando via ?v= (ex.: ofertas-fibra.html?v=v2).
+  var box = document.getElementById('versoes');
+  Object.keys(window.APP_VERSOES).forEach(function (id) {
+    var v = window.APP_VERSOES[id];
+    var label = document.createElement('label');
+    label.className = 'versao';
+    label.innerHTML = '<input type="radio" name="versao" value="' + id + '">'
+      + '<div><p class="nome"></p><p class="desc"></p></div>';
+    label.querySelector('.nome').textContent = v.nome;
+    label.querySelector('.desc').textContent = v.descricao;
+    box.appendChild(label);
+  });
+  function atualizar() {
+    var atual = window.APP_VERSION.id;
+    box.querySelectorAll('.versao').forEach(function (l) {
+      var r = l.querySelector('input');
+      r.checked = r.value === atual;
+      l.classList.toggle('is-selected', r.checked);
+    });
+    document.getElementById('iniciar').href = 'ofertas-fibra.html?v=' + atual;
+    document.getElementById('iniciarNome').textContent = window.APP_VERSION.nome;
+  }
+  box.addEventListener('change', function (e) {
+    window.setAppVersion(e.target.value);
+    window.APP_VERSION = window.APP_VERSOES[e.target.value];
+    atualizar();
+  });
+  var selo = document.getElementById('mostrarSelo');
+  try { selo.checked = localStorage.getItem('appMostrarSelo') !== '0'; } catch (e) { selo.checked = true; }
+  selo.addEventListener('change', function () { window.setMostrarSelo(selo.checked); });
+  atualizar();
+</script>
+
+</body>
+</html>

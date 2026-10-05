@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novo endereço · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --gray-light:#f8f8f8;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* Conteúdo principal (tudo, exceto overlay/sheet) — recebe blur durante o
+     carregamento simulado, pra dar a sensação de "processando por trás". */
+  .app-content{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    transition:filter 0.25s ease;
+  }
+  .app-content.is-blurred{filter:blur(6px);}
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== App bar (título + fechar) ===== */
+  .app-bar{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    flex:1;
+    min-width:0;
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .app-bar .close-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+
+  /* ===== Formulário ===== */
+  .form-section{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:0 16px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .form-section .intro{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--gray-dark);
+  }
+  .mdn-Input{width:100%;}
+
+  .checkbox-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .checkbox-row .mdn-Checkbox-text{
+    font-size:16px;
+    color:var(--gray-dark);
+  }
+
+  /* ===== Button Wrapper (fixo no rodapé) ===== */
+  .button-wrapper{
+    flex-shrink:0;
+    padding:32px 16px;
+  }
+  .btn-primary{
+    width:100%;
+    height:48px;
+    border-radius:var(--radius-pill);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s cubic-bezier(0.2,0,0,1), opacity 0.2s;
+  }
+  .btn-primary:disabled{opacity:.32;cursor:not-allowed;}
+  @media (hover:hover){
+    .btn-primary:not(:disabled):hover{filter:brightness(0.9);}
+  }
+  .btn-primary:not(:disabled):active{transform:scale(0.99);}
+
+  /* ===== Spinner de carregamento (overlay tela cheia) — ver nota sobre
+     .mdn-Spinner mais abaixo, o componente real do Mondrian nasce
+     position:fixed/100vh (feito pra cobrir a página inteira sozinho), então
+     é preciso neutralizar isso pra ele ficar só dentro do overlay. ===== */
+  .loading-overlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:30;
+    background:rgba(255,255,255,0.001); /* deixa o blur de trás visível, sem "lavar" a cor */
+  }
+  /* O .mdn-Spinner real do Mondrian nasce como bloqueador de página inteira
+     (position:fixed, height:100vh, width:100%, fundo próprio) — sem isso,
+     ele escapa da moldura do app-frame (fixed ignora overflow:hidden do
+     ancestral) e cobre a tela toda, comendo o cantos arredondados/sombra
+     que simulam o aparelho. Sobrescrevemos pra ele só preencher o overlay. */
+  .loading-overlay .mdn-Spinner{
+    position:static;
+    height:auto;
+    width:auto;
+    background:transparent;
+  }
+
+  /* ===== Bottom sheet (resultado da consulta de CEP) ===== */
+  .sheet-backdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(31,29,29,0.5);
+    z-index:40;
+    display:flex;
+    align-items:flex-end;
+  }
+  .bottom-sheet{
+    width:100%;
+    background:var(--white);
+    border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow:hidden;
+    transform:translateY(100%);
+    transition:transform 0.3s cubic-bezier(0.05,0.7,0.1,1);
+    touch-action:none; /* deixa o gesto de arrastar pra fechar livre do scroll nativo */
+  }
+  .sheet-backdrop.is-open .bottom-sheet{transform:translateY(0);}
+  .bottom-sheet .bar-wrapper{
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    width:100%;
+    cursor:grab;
+  }
+  .bottom-sheet .bar{width:32px;height:2px;background:var(--gray-line);}
+  .bottom-sheet .header{
+    width:100%;
+    padding:0 16px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .bottom-sheet .header .mdn-Icon--lg{color:var(--red);}
+  .bottom-sheet .header h2{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:24px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .bottom-sheet .body{
+    width:100%;
+    padding:24px 16px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .bottom-sheet .message{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    line-height:1.3;
+  }
+  .bottom-sheet .message.is-success{color:var(--green-text);}
+  .bottom-sheet .message.is-warning{color:var(--warn-text);}
+  .bottom-sheet .tag{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    padding:4px 8px;
+    border-radius:var(--radius-xs);
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    width:fit-content;
+  }
+  .bottom-sheet .tag i{font-size:16px;}
+  .bottom-sheet .tag.is-success{background:var(--green-bg);color:var(--green-text);}
+  .bottom-sheet .tag.is-warning{background:var(--warn-bg);color:var(--warn-text);}
+  .bottom-sheet .address-box{
+    width:100%;
+    background:var(--gray-light);
+    border-radius:var(--radius-sm);
+    padding:24px;
+    display:flex;
+    align-items:flex-start;
+    gap:24px;
+  }
+  .bottom-sheet .address-box p{
+    flex:1;
+    min-width:0;
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .bottom-sheet .address-box .edit-btn{
+    flex-shrink:0;
+    color:var(--ink);
+    display:flex;
+  }
+  .bottom-sheet .sheet-cta{
+    width:100%;
+    height:48px;
+    border-radius:var(--radius-pill);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s;
+  }
+  @media (hover:hover){
+    .bottom-sheet .sheet-cta:hover{filter:brightness(0.9);}
+  }
+  .bottom-sheet .sheet-cta:active{transform:scale(0.99);}
+
+  /* ===== Modal "Confirme seu endereço" — cobre a tela inteira, abre com
+     fade + leve subida por cima do formulário de CEP/Número (que continua
+     intacto por baixo, preenchido e com o Continuar habilitado, pronto se
+     o usuário fechar o modal). Diferente do bottom-sheet acima: não é um
+     cartão parcial com scrim, é a tela cheia mesmo. ===== */
+  .confirm-modal{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    z-index:45;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    transform:translateY(32px);
+    transition:transform 0.3s cubic-bezier(0.05,0.7,0.1,1), opacity 0.3s ease;
+    pointer-events:none;
+  }
+  .confirm-modal.is-open{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+  /* Ícone decorativo (seta) do campo Estado — só visual, o campo é
+     preenchido a partir do CEP e não é editável no modal. */
+  .confirm-modal .select-icon{
+    position:absolute;
+    right:16px;
+    top:50%;
+    transform:translateY(-50%);
+    pointer-events:none;
+    color:var(--gray-dark);
+  }
+  /* Botão fixo do rodapé do modal — diferente do pill "Continuar": é o
+     componente "Button / Button Configuration" do Mondrian, ocupa a
+     largura inteira sem cantos arredondados e sem margem ao redor (cola
+     nas bordas/parte inferior), com o formulário acima rolando por trás. */
+  .btn-footer{
+    flex-shrink:0;
+    width:100%;
+    height:112px;
+    padding:16px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s cubic-bezier(0.2,0,0,1), opacity 0.2s;
+  }
+  .btn-footer .label{flex:1 0 0;text-align:left;}
+  .btn-footer:disabled{opacity:.32;cursor:not-allowed;}
+  @media (hover:hover){
+    .btn-footer:not(:disabled):hover{filter:brightness(0.9);}
+  }
+  .btn-footer:not(:disabled):active{filter:brightness(0.95);}
+
+  /* ===== Toast ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:32px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:50;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+
+  <div class="app-content" id="appContent">
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+
+    <div class="app-bar">
+      <h1>Novo endereço</h1>
+      <button type="button" class="close-btn" aria-label="Fechar" onclick="history.back()">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-label="fechar"></span>
+      </button>
+    </div>
+
+    <div class="form-section">
+      <p class="intro">Digite abaixo os dados do novo endereço para instalação da internet fixa.</p>
+
+      <div class="mdn-Input">
+        <input data-mdn-type="cep" data-mdn-mask="99999  -  999" id="cepInput" title="cep" type="zipcode" class="mdn-Input-field" value="" inputmode="numeric">
+        <label for="cepInput" aria-required="true" class="mdn-Input-label">CEP</label>
+        <small class="mdn-Input-errorFeedback">
+          <span class="mdn-Icon-circulo-exclamacao mdn-Icon--sm" aria-label="circulo-exclamacao"></span> Por favor, preencha este campo corretamente.
+        </small>
+      </div>
+
+      <div class="mdn-Input">
+        <input data-mdn-type="number" id="numeroInput" class="mdn-Input-field" type="text" inputmode="numeric" value="">
+        <label for="numeroInput" class="mdn-Input-label">Número</label>
+      </div>
+
+      <div class="checkbox-row">
+        <div tabindex="0" aria-label="checkbox" class="mdn-Checkbox mdn-Checkbox--default" id="semNumeroCheckbox">
+          <input class="mdn-Checkbox-input" type="checkbox">
+          <label class="mdn-Checkbox-label"></label>
+          <label class="mdn-Checkbox-text">Endereço sem número</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="button-wrapper">
+      <button type="button" class="btn-primary" id="continueBtn" disabled>
+        Continuar
+      </button>
+    </div>
+  </div>
+
+  <div class="loading-overlay" id="loadingOverlay" hidden>
+    <div class="mdn-Spinner mdn-Spinner--default">
+      <span class="mdn-Icon-claro mdn-Icon--lg" aria-label="Carregando" tabindex="0"></span>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+    <div class="bottom-sheet">
+      <div class="bar-wrapper"><div class="bar"></div></div>
+      <div class="header">
+        <span class="mdn-Icon-localizacao mdn-Icon--lg" aria-hidden="true"></span>
+        <h2>Cobertura na região</h2>
+      </div>
+      <div class="body" id="sheetBody">
+        <!-- Preenchido em runtime por renderSheet() -->
+      </div>
+    </div>
+  </div>
+
+  <div class="confirm-modal" id="confirmModal" hidden>
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+
+    <div class="app-bar">
+      <h1>Novo endereço</h1>
+      <button type="button" class="close-btn" aria-label="Fechar" onclick="fecharConfirmModal()">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-label="fechar"></span>
+      </button>
+    </div>
+
+    <div class="form-section">
+      <p class="intro">Digite abaixo os dados do novo endereço para instalação da internet fixa.</p>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="cepDisplay" type="text" value="" readonly>
+        <label for="cepDisplay" class="mdn-Input-label">CEP</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="estadoDisplay" type="text" value="" disabled>
+        <label for="estadoDisplay" class="mdn-Input-label">Estado</label>
+        <span class="select-icon"><em aria-hidden="true" class="mdn-Icon-baixo mdn-Icon--sm"></em></span>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="cidadeDisplay" type="text" value="" disabled>
+        <label for="cidadeDisplay" class="mdn-Input-label">Cidade</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="bairroDisplay" type="text" value="" disabled>
+        <label for="bairroDisplay" class="mdn-Input-label">Bairro</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="logradouroDisplay" type="text" value="" disabled>
+        <label for="logradouroDisplay" class="mdn-Input-label">Logradouro</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="numeroDisplay" type="text" value="" disabled>
+        <label for="numeroDisplay" class="mdn-Input-label">Número</label>
+      </div>
+
+      <div class="mdn-Input">
+        <select id="complementoSelect" class="mdn-Input-field" data-mdn-type="select" style="background-image:none">
+          <option value="" selected>Selecione</option>
+          <option value="Apartamento 1">Apartamento 1</option>
+          <option value="Apartamento 2">Apartamento 2</option>
+          <option value="Apartamento 3">Apartamento 3</option>
+          <option value="outro">Quero informar meu complemento</option>
+        </select>
+        <span class="mdn-Icon-baixo mdn-Icon--md mdn-Input-select-arrow"></span>
+        <label for="complementoSelect" class="mdn-Input-label">Complemento *</label>
+      </div>
+
+      <div class="mdn-Input" id="complementoOutroWrapper" hidden>
+        <input class="mdn-Input-field" id="complementoOutroInput" type="text" value="">
+        <label for="complementoOutroInput" class="mdn-Input-label">Complemento</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="referenciaInput" type="text" value="">
+        <label for="referenciaInput" class="mdn-Input-label">Referência (opcional)</label>
+      </div>
+    </div>
+
+    <button type="button" class="btn-footer" id="addAddressBtn" disabled>
+      <span class="label">Adicionar endereço</span>
+      <span class="mdn-Icon-seta-direita mdn-Icon--md" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const produtoId = params.get('produto');
+
+  const cepInput = document.getElementById('cepInput');
+  const numeroInput = document.getElementById('numeroInput');
+  const semNumeroCheckbox = document.getElementById('semNumeroCheckbox').querySelector('.mdn-Checkbox-input');
+  const continueBtn = document.getElementById('continueBtn');
+
+  function cepDigits() {
+    return cepInput.value.replace(/\D/g, '');
+  }
+
+  function validarFormulario() {
+    const cepOk = cepDigits().length === 8;
+    const numeroOk = semNumeroCheckbox.checked || numeroInput.value.trim().length > 0;
+    continueBtn.disabled = !(cepOk && numeroOk);
+  }
+
+  // 'input' cobre a maioria dos casos, mas a máscara do CEP reprocessa o
+  // valor por conta própria (inserindo o traço) de um jeito que às vezes
+  // não dispara 'input' de novo pra esse valor final — 'keyup' cobre esse
+  // gap sem depender de adivinhar o timing exato da máscara.
+  ['input', 'keyup', 'blur'].forEach((evt) => {
+    cepInput.addEventListener(evt, validarFormulario);
+    numeroInput.addEventListener(evt, validarFormulario);
+  });
+  semNumeroCheckbox.addEventListener('change', () => {
+    numeroInput.disabled = semNumeroCheckbox.checked;
+    if (semNumeroCheckbox.checked) {
+      numeroInput.value = '';
+      numeroInput.closest('.mdn-Input').classList.add('mdn-is-disabled');
+    } else {
+      numeroInput.closest('.mdn-Input').classList.remove('mdn-is-disabled');
+    }
+    validarFormulario();
+  });
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('is-visible');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+  }
+
+  function fmtCep(digits) {
+    return digits.slice(0, 5) + '-' + digits.slice(5);
+  }
+
+  function abrirSheet() {
+    const backdrop = document.getElementById('sheetBackdrop');
+    backdrop.hidden = false;
+    // rAF pra garantir que o navegador aplique o estado inicial (hidden->flex)
+    // antes de ligar a transição de entrada (senão ela não anima, só "pisca").
+    requestAnimationFrame(() => requestAnimationFrame(() => backdrop.classList.add('is-open')));
+  }
+
+  function fecharSheet() {
+    const backdrop = document.getElementById('sheetBackdrop');
+    backdrop.classList.remove('is-open');
+    setTimeout(() => { backdrop.hidden = true; }, 300);
+  }
+
+  // Editar (ícone lápis / "revisar dados") -> fecha o sheet e devolve pro
+  // formulário, que continua preenchido (mesma página, nada foi perdido).
+  function editarEndereco() {
+    fecharSheet();
+  }
+
+  // ===== Fechar o bottom sheet: clique fora, Esc, ou arrastar pra baixo =====
+  const sheetBackdropEl = document.getElementById('sheetBackdrop');
+  const bottomSheetEl = document.querySelector('.bottom-sheet');
+
+  // Clique fora (no scrim escuro, não no cartão branco em si).
+  sheetBackdropEl.addEventListener('click', (e) => {
+    if (e.target === sheetBackdropEl) fecharSheet();
+  });
+
+  // Esc — só reage se o sheet estiver de fato aberto.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !sheetBackdropEl.hidden) fecharSheet();
+  });
+
+  // Arrastar pra baixo (mouse ou touch, via Pointer Events cobre os dois).
+  // Ignora arrasto iniciado em cima de botão/link (ex: "Eu quero"/lápis),
+  // pra não atrapalhar o clique normal deles.
+  (function setupSheetDrag() {
+    let dragging = false;
+    let startY = 0;
+    let deltaY = 0;
+
+    function onPointerDown(e) {
+      if (e.target.closest('button, a')) return;
+      dragging = true;
+      startY = e.clientY;
+      deltaY = 0;
+      bottomSheetEl.style.transition = 'none';
+      bottomSheetEl.setPointerCapture(e.pointerId);
+    }
+    function onPointerMove(e) {
+      if (!dragging) return;
+      deltaY = Math.max(0, e.clientY - startY);
+      bottomSheetEl.style.transform = `translateY(${deltaY}px)`;
+    }
+    function onPointerUp() {
+      if (!dragging) return;
+      dragging = false;
+      bottomSheetEl.style.transition = '';
+      bottomSheetEl.style.transform = '';
+      // Arrastou mais de ~1/4 da altura do próprio sheet (ou pelo menos
+      // 100px) -> solta a tela, igual um "flick pra fechar" de app de verdade.
+      const limiar = Math.min(120, bottomSheetEl.getBoundingClientRect().height * 0.25);
+      if (deltaY > limiar) fecharSheet();
+    }
+
+    bottomSheetEl.addEventListener('pointerdown', onPointerDown);
+    bottomSheetEl.addEventListener('pointermove', onPointerMove);
+    bottomSheetEl.addEventListener('pointerup', onPointerUp);
+    bottomSheetEl.addEventListener('pointercancel', onPointerUp);
+  })();
+
+  function renderSheetDisponivel(resultado) {
+    document.getElementById('sheetBody').innerHTML = `
+      <p class="message is-success">Este plano tem cobertura no novo endereço adicionado.</p>
+      <div class="tag is-success">
+        <i class="mdn-Icon-check-circulo" aria-hidden="true"></i>
+        Disponível neste endereço
+      </div>
+      <div class="address-box">
+        <p>${resultado.endereco}</p>
+        <button type="button" class="edit-btn" aria-label="Editar endereço" onclick="editarEndereco()">
+          <span class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+      </div>
+      <button type="button" class="sheet-cta" id="sheetContinueBtn">Continuar</button>`;
+    document.getElementById('sheetContinueBtn').addEventListener('click', () => {
+      fecharSheet();
+      setTimeout(() => abrirConfirmModal(resultado), 300);
+    });
+  }
+
+  // ===== Modal "Confirme seu endereço" (Complemento/Referência) — cobre a
+  // tela cheia por cima deste formulário, que fica intacto por baixo. =====
+  const confirmModalEl = document.getElementById('confirmModal');
+  const complementoSelect = document.getElementById('complementoSelect');
+  const complementoOutroWrapper = document.getElementById('complementoOutroWrapper');
+  const complementoOutroInput = document.getElementById('complementoOutroInput');
+  const referenciaInput = document.getElementById('referenciaInput');
+  const addAddressBtn = document.getElementById('addAddressBtn');
+  let dadosEndereco = null;
+
+  function abrirConfirmModal(dados) {
+    dadosEndereco = dados;
+    document.getElementById('cepDisplay').value = dados.cep || '';
+    document.getElementById('estadoDisplay').value = dados.uf || '';
+    document.getElementById('cidadeDisplay').value = dados.cidade || '';
+    document.getElementById('bairroDisplay').value = dados.bairro || '';
+    document.getElementById('logradouroDisplay').value = dados.logradouro || '';
+    document.getElementById('numeroDisplay').value = dados.numero || '';
+    complementoSelect.value = '';
+    complementoOutroWrapper.hidden = true;
+    complementoOutroInput.value = '';
+    referenciaInput.value = '';
+
+    // Campos preenchidos via JS depois do init do bundle Mondrian não
+    // passam pelo evento que ativa o label flutuante sozinho — replicamos
+    // a mesma classe manualmente (mesmo esquema usado no spinner/CEP).
+    confirmModalEl.querySelectorAll('.mdn-Input').forEach((wrapper) => {
+      const input = wrapper.querySelector('.mdn-Input-field');
+      wrapper.classList.toggle('mdn-Input--activatedField', !!(input && input.value));
+    });
+
+    validarComplemento();
+    confirmModalEl.hidden = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => confirmModalEl.classList.add('is-open')));
+  }
+
+  // Fechar (X) -> volta pro formulário de CEP/Número, que nunca saiu da
+  // tela (mesma página) e continua com os dados digitados e o Continuar habilitado.
+  function fecharConfirmModal() {
+    confirmModalEl.classList.remove('is-open');
+    setTimeout(() => { confirmModalEl.hidden = true; }, 300);
+  }
+
+  // "Quero informar meu complemento" -> revela um campo de texto livre logo
+  // abaixo do seletor, em vez de navegar/abrir outra coisa.
+  complementoSelect.addEventListener('change', () => {
+    complementoSelect.closest('.mdn-Input').classList.toggle('mdn-Input--activatedField', !!complementoSelect.value);
+    const isOutro = complementoSelect.value === 'outro';
+    complementoOutroWrapper.hidden = !isOutro;
+    if (!isOutro) complementoOutroInput.value = '';
+    validarComplemento();
+  });
+
+  function validarComplemento() {
+    const valor = complementoSelect.value;
+    const ok = valor === 'outro'
+      ? complementoOutroInput.value.trim().length > 0
+      : valor.length > 0;
+    addAddressBtn.disabled = !ok;
+  }
+  ['input', 'keyup', 'blur'].forEach((evt) => complementoOutroInput.addEventListener(evt, validarComplemento));
+
+  addAddressBtn.addEventListener('click', () => {
+    validarComplemento(); // reforço: nunca confiar só no último evento do input
+    if (addAddressBtn.disabled) return;
+
+    const complemento = complementoSelect.value === 'outro'
+      ? complementoOutroInput.value.trim()
+      : complementoSelect.value;
+    const referencia = referenciaInput.value.trim();
+    dadosEndereco.complemento = complemento;
+    dadosEndereco.referencia = referencia;
+
+    // Endereço final com o complemento já embutido na linha, mesmo formato
+    // usado pelos endereços que já vêm prontos da planilha (ex: "..., 780,
+    // Torre A, Chácara..."), pra ficar consistente na lista de seleção.
+    const enderecoFinal = montarEndereco({ ...dadosEndereco, complemento });
+
+    // Vai pra tela de seleção de endereço via sessionStorage (mesma origem,
+    // navegação de página de verdade) — ela lê essa chave no load, coloca
+    // esse endereço no topo da lista e já deixa selecionado.
+    sessionStorage.setItem('enderecoRecemAdicionado', JSON.stringify({
+      id: 'novo-' + Date.now(),
+      endereco: enderecoFinal,
+      complemento: complemento,
+      referencia: referencia,
+      disponivel: true,
+    }));
+
+    window.location.href = 'selecao-endereco.html' + (produtoId ? ('?produto=' + encodeURIComponent(produtoId)) : '');
+  });
+
+  // Formato "do ar": tudo em maiúsculas, partes separadas por vírgula e o
+  // trecho cidade/UF e CEP separados por " - ". Partes vazias (ex: CEP de
+  // logradouro único sem bairro, ou "Sem complemento") ficam de fora.
+  function montarEndereco({ logradouro, numero, complemento, bairro, cidade, uf, cep }) {
+    const semComp = !complemento || /^sem complemento$/i.test(complemento);
+    const rua = [logradouro, numero, semComp ? '' : complemento, bairro].filter(Boolean).join(', ');
+    return `${rua} - ${cidade}/${uf} - CEP: ${cep}`.toUpperCase();
+  }
+
+  function renderSheetIndisponivel(endereco, ctaLabel, onCta) {
+    document.getElementById('sheetBody').innerHTML = `
+      <p class="message is-warning">Este plano não tem cobertura no novo endereço adicionado.</p>
+      <div class="tag is-warning">
+        <i class="mdn-Icon-bloqueio" aria-hidden="true"></i>
+        Não disponível neste endereço
+      </div>
+      <div class="address-box">
+        <p>${endereco}</p>
+        <button type="button" class="edit-btn" aria-label="Editar endereço" onclick="editarEndereco()">
+          <span class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+      </div>
+      <button type="button" class="sheet-cta" id="sheetCtaBtn">${ctaLabel}</button>`;
+    document.getElementById('sheetCtaBtn').addEventListener('click', onCta);
+  }
+
+  function renderSheetErro(cepFormatado) {
+    document.getElementById('sheetBody').innerHTML = `
+      <p class="message is-warning">Não encontramos esse CEP. Confira os dados e tente novamente.</p>
+      <div class="tag is-warning">
+        <i class="mdn-Icon-alerta" aria-hidden="true"></i>
+        CEP não encontrado
+      </div>
+      <div class="address-box">
+        <p>CEP ${cepFormatado} não encontrado</p>
+        <button type="button" class="edit-btn" aria-label="Editar CEP" onclick="editarEndereco()">
+          <span class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+      </div>
+      <button type="button" class="sheet-cta" id="sheetErroBtn">Revisar dados</button>`;
+    document.getElementById('sheetErroBtn').addEventListener('click', editarEndereco);
+  }
+
+  // ===== Combinado de teste: CEP 00000-000 sempre simula "sem cobertura",
+  // sem depender de uma consulta real (qualquer Número serve). Qualquer
+  // outro CEP faz a consulta de verdade no ViaCEP. =====
+  const CEP_TESTE_INDISPONIVEL = '00000000';
+
+  async function consultarCep() {
+    const overlay = document.getElementById('loadingOverlay');
+    const digits = cepDigits();
+    const numero = semNumeroCheckbox.checked ? 'S/N' : numeroInput.value.trim();
+    const cepFormatado = fmtCep(digits);
+
+    document.getElementById('appContent').classList.add('is-blurred');
+    overlay.hidden = false;
+
+    let resultado;
+    if (digits === CEP_TESTE_INDISPONIVEL) {
+      resultado = { tipo: 'indisponivel', endereco: montarEndereco({ logradouro: 'Rua Não Viável', numero, bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', cep: cepFormatado }) };
+    } else {
+      try {
+        const resp = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+        const data = await resp.json();
+        if (data.erro) {
+          resultado = { tipo: 'erro' };
+        } else {
+          const endereco = montarEndereco({ logradouro: data.logradouro, numero, bairro: data.bairro, cidade: data.localidade, uf: data.uf, cep: data.cep });
+          resultado = {
+            tipo: 'disponivel',
+            endereco,
+            cep: data.cep,
+            numero,
+            uf: data.uf,
+            cidade: data.localidade,
+            bairro: data.bairro,
+            logradouro: data.logradouro,
+          };
+        }
+      } catch (err) {
+        resultado = { tipo: 'erro' };
+      }
+    }
+
+    setTimeout(() => {
+      overlay.hidden = true;
+      document.getElementById('appContent').classList.remove('is-blurred');
+
+      if (resultado.tipo === 'disponivel') {
+        renderSheetDisponivel(resultado);
+      } else if (resultado.tipo === 'indisponivel') {
+        renderSheetIndisponivel(resultado.endereco, 'Conferir outras ofertas', () => {
+          showToast('Próxima tela ainda não implementada');
+        });
+      } else {
+        renderSheetErro(cepFormatado);
+      }
+      abrirSheet();
+    }, 2000);
+  }
+
+  continueBtn.addEventListener('click', () => {
+    validarFormulario(); // reforço: nunca confiar só no último evento dos inputs
+    if (continueBtn.disabled) return;
+    consultarCep();
+  });
+</script>
+
+</body>
+</html>

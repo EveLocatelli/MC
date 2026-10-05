@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seleção de endereço · Simulador App</title>
+
+<!-- Mondrian via CDN -->
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/reset.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/tokens/claro-tokens-3.0.0.custom-properties.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.css">
+<link rel="stylesheet" href="https://mondrian.claro.com.br/icons/mondrian-icons-latest.css">
+
+<style>
+  /* ===== Tokens ===== */
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --white:#ffffff;
+    --bg-canvas:#e9e9e9;
+    --green-bg:#ddf9ed;
+    --green-text:#006b4f;
+    --warn-bg:#fffaad;
+    --warn-text:#b84d01;
+    --radius-xs:4px;
+    --radius-sm:12px;
+    --radius-pill:500px;
+  }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Roboto', sans-serif;
+    background:var(--bg-canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;}
+
+  /* ===== Moldura do app (simula viewport mobile) — mesmo padrão de ofertas-fibra.html ===== */
+  .app-frame{
+    width:100%;
+    max-width:420px;
+    height:100vh;
+    margin:0 auto;
+    background:var(--white);
+    position:relative;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  @media (min-width:421px) and (hover:hover) and (pointer:fine){
+    body{display:flex;justify-content:center;padding:24px 0;}
+    .app-frame{
+      height:844px;
+      border-radius:32px;
+      box-shadow:0 24px 60px rgba(0,0,0,0.18);
+    }
+  }
+
+  /* ===== Celular de verdade (toque): sem moldura, a tela ocupa o aparelho =====
+     A moldura de 420px com cantos e sombra só existe para simular um celular
+     no desktop (mouse). Em dispositivo touch o layout se adapta à tela, sem
+     moldura e sem a barra de status falsa (o aparelho já tem a dele). */
+  @media (hover:none), (pointer:coarse){
+    body{display:block;padding:0;}
+    .app-frame{
+      max-width:none;
+      width:100%;
+      margin:0;
+      border-radius:0;
+      box-shadow:none;
+      height:100vh;
+      height:100dvh;
+    }
+    .status-bar{display:none !important;}
+  }
+
+  /* ===== Status bar (mock do SO) ===== */
+  .status-bar{
+    height:44px;
+    padding:0 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:var(--white);
+    flex-shrink:0;
+  }
+  .status-bar .time{
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .status-bar .icons{display:flex;align-items:center;gap:6px;}
+  .status-bar .icons img{display:block;height:14px;width:auto;}
+  .status-bar .icons img.battery{height:12px;}
+
+  /* ===== Área rolável (app bar fica grudada no topo dela) ===== */
+  .scroll-area{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    /* Fallback estático (o JS no fim do arquivo mede a altura real do
+       .button-wrapper e substitui esse valor — ver ajustarEspacoRodape()).
+       176px é a altura medida com os 2 botões; deixando uma folga aqui. */
+    padding-bottom:190px;
+  }
+
+  .app-bar{
+    position:sticky;
+    top:0;
+    z-index:5;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    gap:16px;
+    padding:24px 16px;
+  }
+  .app-bar .back-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .app-bar h1{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+
+  /* ===== Cabeçalho do plano ===== */
+  .plan-heading{
+    padding:0 16px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .plan-heading .icon-wifi{color:var(--red);}
+  .plan-heading .eyebrow{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--gray-dark);
+    text-transform:uppercase;
+  }
+  .plan-heading h2{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:700;
+    font-size:24px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .plan-heading p{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--gray-dark);
+  }
+
+  /* ===== Divider Section — separador entre blocos =====
+     Estrutura real do Figma: duas peças brancas de 6px com 4px de GAP entre
+     elas (não coladas) — é esse gap que deixa o fundo cinza do container
+     visível como uma linha sólida de ~4px; a versão anterior (::before/::after
+     encostados, sem gap) cobria o cinza por completo e a linha sumia. */
+  .divider-section{
+    height:16px;
+    background:var(--gray-line);
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    flex-shrink:0;
+  }
+  .divider-section .piece{
+    height:6px;
+    background:var(--white);
+  }
+  .divider-section .piece--top{border-radius:0 0 var(--radius-sm) var(--radius-sm);}
+  .divider-section .piece--bottom{border-radius:var(--radius-sm) var(--radius-sm) 0 0;}
+
+  /* ===== Bloco "Selecione o endereço" ===== */
+  .info-block{
+    padding:32px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .info-block .eyebrow{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--gray-dark);
+    text-transform:uppercase;
+  }
+  .info-block h2{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:20px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+
+  .divider{height:1px;background:var(--gray-line);flex-shrink:0;}
+
+  /* ===== Lista de endereços ===== */
+  .address-row{
+    display:flex;
+    align-items:flex-start;
+    gap:16px;
+    padding:32px 16px;
+  }
+  .address-row .infos{
+    flex:1;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .address-row .linha{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .address-row .referencia{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--gray-dark);
+  }
+  .address-row .tag{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    padding:4px 8px;
+    border-radius:var(--radius-xs);
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    width:fit-content;
+  }
+  .address-row .tag i{font-size:16px;}
+  .address-row .tag.is-disponivel{background:var(--green-bg);color:var(--green-text);}
+  .address-row .tag.is-indisponivel{background:var(--warn-bg);color:var(--warn-text);}
+
+  .address-row .edit-btn{
+    flex-shrink:0;
+    color:var(--ink);
+    display:flex;
+  }
+
+  /* Estado indisponível: texto e ícones esmaecidos, sem interação */
+  .address-row.is-indisponivel .linha,
+  .address-row.is-indisponivel .referencia{
+    color:var(--gray-line);
+  }
+  .address-row.is-indisponivel .edit-btn{
+    color:var(--gray-line);
+    pointer-events:none;
+  }
+
+  /* ===== Radio (Mondrian real) ===== */
+  .mdn-Radio{flex-shrink:0;}
+  .address-row.is-indisponivel .mdn-Radio{opacity:.5;pointer-events:none;}
+
+  /* ===== Button Wrapper (fixo no rodapé) ===== */
+  .button-wrapper{
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    background:var(--white);
+    padding:32px 16px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    z-index:10;
+  }
+  .btn-outline{
+    width:100%;
+    height:48px;
+    border:1px solid var(--gray-line);
+    border-radius:var(--radius-pill);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--ink);
+    background:var(--white);
+  }
+  @media (hover:hover){
+    .btn-outline:hover{background:#f8f8f8;}
+  }
+  .btn-primary{
+    width:100%;
+    height:48px;
+    border-radius:var(--radius-pill);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s cubic-bezier(0.2,0,0,1), opacity 0.2s;
+  }
+  .btn-primary:disabled{
+    opacity:.32;
+    cursor:not-allowed;
+  }
+  @media (hover:hover){
+    .btn-primary:not(:disabled):hover{filter:brightness(0.9);}
+  }
+  .btn-primary:not(:disabled):active{transform:scale(0.99);}
+
+  /* ===== Spinner de carregamento (overlay tela cheia, mesmo padrão de ofertas-fibra.html) ===== */
+  .loading-overlay{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  /* O .mdn-Spinner real do Mondrian nasce como bloqueador de página inteira
+     (position:fixed, height:100vh, width:100%, fundo próprio) — sem isso,
+     ele escapa da moldura do app-frame (fixed ignora overflow:hidden do
+     ancestral) e cobre a tela toda, comendo os cantos arredondados/sombra
+     que simulam o aparelho. Sobrescrevemos pra ele só preencher o overlay. */
+  .loading-overlay .mdn-Spinner{
+    position:static;
+    height:auto;
+    width:auto;
+    background:transparent;
+  }
+
+  /* ===== Toast simples (ações ainda sem tela final) ===== */
+  .toast{
+    position:absolute;
+    left:16px;
+    right:16px;
+    bottom:100px;
+    background:var(--ink);
+    color:var(--white);
+    font-family:'Roboto',sans-serif;
+    font-size:14px;
+    text-align:center;
+    padding:12px 16px;
+    border-radius:var(--radius-sm);
+    z-index:30;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.2s, transform 0.2s;
+    pointer-events:none;
+  }
+  .toast.is-visible{opacity:1;transform:translateY(0);}
+
+  /* ===== Modal "Complemento do endereço" — mesmo padrão do modal usado em
+     adicionar-endereco.html: cobre a tela inteira, abre com fade + leve
+     subida por cima da lista de endereços (que fica intacta por baixo). ===== */
+  .confirm-modal{
+    position:absolute;
+    inset:0;
+    background:var(--white);
+    z-index:45;
+    display:flex;
+    flex-direction:column;
+    opacity:0;
+    transform:translateY(32px);
+    transition:transform 0.3s cubic-bezier(0.05,0.7,0.1,1), opacity 0.3s ease;
+    pointer-events:none;
+  }
+  .confirm-modal.is-open{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+  .confirm-modal .app-bar{position:static;justify-content:space-between;}
+  .confirm-modal .app-bar h1{flex:1;min-width:0;}
+  .confirm-modal .form-section{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:0 16px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .confirm-modal .form-section .intro{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--gray-dark);
+  }
+  .confirm-modal .mdn-Input{width:100%;}
+  .confirm-modal .close-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    width:24px;
+    height:24px;
+    color:var(--ink);
+    flex-shrink:0;
+  }
+  .confirm-modal .select-icon{
+    position:absolute;
+    right:16px;
+    top:50%;
+    transform:translateY(-50%);
+    pointer-events:none;
+    color:var(--gray-dark);
+  }
+  /* Botão fixo do rodapé — mesmo componente "Button / Button Configuration"
+     do Mondrian usado em adicionar-endereco.html: largura inteira, sem
+     cantos arredondados, 112px de altura, colado nas bordas/rodapé. */
+  .btn-footer{
+    flex-shrink:0;
+    width:100%;
+    height:112px;
+    padding:16px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s cubic-bezier(0.2,0,0,1), opacity 0.2s;
+  }
+  .btn-footer .label{flex:1 0 0;text-align:left;}
+  .btn-footer:disabled{opacity:.32;cursor:not-allowed;}
+  @media (hover:hover){
+    .btn-footer:not(:disabled):hover{filter:brightness(0.9);}
+  }
+  .btn-footer:not(:disabled):active{filter:brightness(0.95);}
+</style>
+</head>
+<body>
+
+<div class="app-frame">
+
+  <div class="status-bar">
+    <span class="time">5:13</span>
+    <div class="icons">
+      <img src="assets/statusbar/alarm.svg" alt="">
+      <img src="assets/statusbar/bluetooth.svg" alt="">
+      <img src="assets/statusbar/wifi.svg" alt="">
+      <img src="assets/statusbar/signal.svg" alt="">
+      <img class="battery" src="assets/statusbar/battery.svg" alt="">
+    </div>
+  </div>
+
+  <div class="scroll-area">
+    <div class="app-bar">
+      <button type="button" class="back-btn" aria-label="Voltar" onclick="history.back()">
+        <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-label="seta-esquerda"></span>
+      </button>
+      <h1 id="appBarTitle"></h1>
+    </div>
+
+    <div class="plan-heading">
+      <i class="icon-wifi mdn-Icon-wifi mdn-Icon--lg" aria-hidden="true"></i>
+      <p class="eyebrow" id="planEyebrow"></p>
+      <h2 id="planTitle"></h2>
+      <p id="planSubtitle"></p>
+    </div>
+
+    <div class="divider-section">
+      <div class="piece piece--top"></div>
+      <div class="piece piece--bottom"></div>
+    </div>
+
+    <div class="info-block">
+      <p class="eyebrow">Selecione o endereço</p>
+      <h2>Selecione um endereço para a instalação da Claro Fibra</h2>
+    </div>
+    <div class="divider"></div>
+
+    <div id="addressList">
+      <!-- Linhas renderizadas em runtime a partir de app-catalog.js -->
+    </div>
+  </div>
+
+  <div class="button-wrapper">
+    <button type="button" class="btn-outline" id="addAddressBtn">Adicionar novo endereço</button>
+    <button type="button" class="btn-primary" id="continueBtn" disabled>Continuar</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="loading-overlay" id="loadingOverlay" hidden>
+    <div class="mdn-Spinner mdn-Spinner--default">
+      <span class="mdn-Icon-claro mdn-Icon--lg" aria-label="Carregando" tabindex="0"></span>
+    </div>
+  </div>
+
+  <div class="confirm-modal" id="confirmModal" hidden>
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+
+    <div class="app-bar">
+      <h1>Complemento do endereço</h1>
+      <button type="button" class="close-btn" aria-label="Fechar" onclick="fecharComplementoModal()">
+        <span class="mdn-Icon-fechar mdn-Icon--md" aria-label="fechar"></span>
+      </button>
+    </div>
+
+    <div class="form-section">
+      <p class="intro">Confirme o complemento para instalação da internet fixa.</p>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="enderecoSelecionadoDisplay" type="text" value="" disabled>
+        <label for="enderecoSelecionadoDisplay" class="mdn-Input-label">Endereço</label>
+      </div>
+
+      <div class="mdn-Input">
+        <select id="complementoExistenteSelect" class="mdn-Input-field" data-mdn-type="select" style="background-image:none">
+          <option value="" selected>Selecione</option>
+          <option value="Sem complemento">Sem complemento</option>
+          <option value="outro">Quero informar meu complemento</option>
+        </select>
+        <span class="mdn-Icon-baixo mdn-Icon--md mdn-Input-select-arrow"></span>
+        <label for="complementoExistenteSelect" class="mdn-Input-label">Complemento *</label>
+      </div>
+
+      <div class="mdn-Input" id="complementoExistenteOutroWrapper" hidden>
+        <input class="mdn-Input-field" id="complementoExistenteOutroInput" type="text" value="">
+        <label for="complementoExistenteOutroInput" class="mdn-Input-label">Complemento</label>
+      </div>
+    </div>
+
+    <button type="button" class="btn-footer" id="confirmarComplementoBtn" disabled>
+      <span class="label">Continuar</span>
+      <span class="mdn-Icon-seta-direita mdn-Icon--md" aria-hidden="true"></span>
+    </button>
+  </div>
+
+</div>
+
+<script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
+<script src="app-versions.js"></script>
+<script src="app-catalog.js"></script>
+<script>
+  const catalog = window.APP_CATALOG;
+  const params = new URLSearchParams(window.location.search);
+  const produtoId = params.get('produto');
+  const produto = (catalog.produtos && catalog.produtos[produtoId])
+    || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]]; // fallback: nunca deixar a tela sem dado
+  const pagina = catalog.paginas[produto.paginaId];
+
+  document.getElementById('appBarTitle').textContent = pagina.barraSuperiorEndereco;
+  document.getElementById('planEyebrow').textContent = pagina.barraSuperiorEndereco;
+  document.getElementById('planTitle').textContent = produto.tituloConfirmacao || produto.nome;
+  document.getElementById('planSubtitle').textContent = pagina.subtituloEndereco;
+
+  function renderAddressRow(end, index) {
+    const wrap = document.createElement('div');
+    wrap.className = 'address-row' + (end.disponivel ? '' : ' is-indisponivel');
+
+    const tagClass = end.disponivel ? 'is-disponivel' : 'is-indisponivel';
+    const tagIcon = end.disponivel ? 'mdn-Icon-check-circulo' : 'mdn-Icon-bloqueio';
+    const tagText = end.disponivel ? 'Disponível neste endereço' : 'Não disponível neste endereço';
+    // Endereço recém-adicionado pode não ter referência (campo era opcional
+    // na tela de complemento) — nesse caso a linha nem aparece, em vez de
+    // mostrar "Referência: " vazio.
+    const referenciaHtml = end.referencia
+      ? `<p class="referencia">Referência: ${end.referencia}</p>`
+      : '';
+
+    wrap.innerHTML = `
+      <div class="infos">
+        <p class="linha">${end.endereco.toUpperCase()}</p>
+        ${referenciaHtml}
+        <span class="tag ${tagClass}">
+          <i class="${tagIcon}" aria-hidden="true"></i>
+          ${tagText}
+        </span>
+      </div>
+      <button type="button" class="edit-btn" aria-label="Editar endereço">
+        <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
+      </button>
+      <div tabindex="0" class="mdn-Radio mdn-Radio--default" aria-label="Selecionar endereço">
+        <input type="radio" class="mdn-Radio-input" name="endereco" role="radio"
+               value="${end.id}" ${end.disponivel ? '' : 'disabled'} ${end.selecionado ? 'checked' : ''}>
+        <label class="mdn-Radio-label"></label>
+      </div>`;
+    return wrap;
+  }
+
+  // Endereço recém-cadastrado (fluxo "Adicionar novo endereço" -> CEP ->
+  // confirmação -> complemento) chega aqui via sessionStorage, já que é uma
+  // navegação de página de verdade (não um modal na mesma tela). Ele entra
+  // como primeiro item da lista e já vem selecionado — consumido uma única
+  // vez (removido logo em seguida) pra um reload não duplicá-lo.
+  // Endereços cadastrados na sessão (fluxo "Adicionar novo endereço" -> CEP ->
+  // confirmação -> complemento). O cadastro devolve o endereço novo em
+  // 'enderecoRecemAdicionado' (consumido uma única vez, pra um reload não
+  // duplicar); aqui ele passa pra lista 'enderecosSessao', que persiste — assim
+  // ele continua na lista se o usuário voltar da página de produto.
+  const parseJSON = (k, fb) => { try { return JSON.parse(sessionStorage.getItem(k)) ?? fb; } catch (e) { return fb; } };
+  const enderecosSessao = parseJSON('enderecosSessao', []);
+  let selecionadoId = (parseJSON('enderecoConfirmado', null) || {}).id || null;
+  const novoRaw = parseJSON('enderecoRecemAdicionado', null);
+  if (novoRaw) {
+    sessionStorage.removeItem('enderecoRecemAdicionado');
+    novoRaw.recemAdicionado = true; // já veio completo (com complemento) do cadastro
+    if (!enderecosSessao.some((e) => e.id === novoRaw.id)) enderecosSessao.unshift(novoRaw);
+    sessionStorage.setItem('enderecosSessao', JSON.stringify(enderecosSessao));
+    selecionadoId = novoRaw.id; // endereço recém-adicionado já vem selecionado
+  }
+  catalog.enderecos = [...enderecosSessao, ...catalog.enderecos];
+  // Complementos já informados na sessão (endereços da lista, não os recém-adicionados):
+  // ao voltar da página de produto, o mesmo endereço não pede o complemento de novo.
+  const complementosSessao = parseJSON('complementosSessao', {});
+  catalog.enderecos.forEach((e) => { if (complementosSessao[e.id]) e.complemento = complementosSessao[e.id]; });
+  catalog.enderecos.forEach((e) => { if (e.id === selecionadoId && e.disponivel) e.selecionado = true; });
+
+  const listEl = document.getElementById('addressList');
+  catalog.enderecos.forEach((end, i) => {
+    listEl.appendChild(renderAddressRow(end, i));
+    const divider = document.createElement('div');
+    divider.className = 'divider';
+    listEl.appendChild(divider);
+  });
+
+  const continueBtn = document.getElementById('continueBtn');
+  if (listEl.querySelector('.mdn-Radio-input:checked')) {
+    continueBtn.disabled = false;
+  }
+
+  // O componente Mondrian Radio normalmente conta com o JS do bundle pra
+  // ligar "clicar em qualquer lugar do wrapper" a "marcar o input" — esse
+  // wiring só roda no carregamento da página, então não alcança radios
+  // inseridos depois via innerHTML (como estes, montados a partir do
+  // catálogo). Por isso marcamos o input manualmente aqui, clicando em
+  // qualquer ponto do wrapper `.mdn-Radio`, e disparamos um 'change' real
+  // pra manter o comportamento igual ao de um radio nativo.
+  listEl.addEventListener('click', (e) => {
+    const wrapper = e.target.closest('.mdn-Radio');
+    if (!wrapper) return;
+    const input = wrapper.querySelector('.mdn-Radio-input');
+    if (!input || input.disabled || input.checked) return;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  listEl.addEventListener('change', (e) => {
+    if (e.target.matches('.mdn-Radio-input')) {
+      continueBtn.disabled = false;
+    }
+  });
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('is-visible');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove('is-visible'), 2200);
+  }
+
+  document.getElementById('addAddressBtn').addEventListener('click', () => {
+    window.location.href = 'adicionar-endereco.html?produto=' + encodeURIComponent(produto.id);
+  });
+
+  continueBtn.addEventListener('click', () => {
+    if (continueBtn.disabled) return;
+    const radioChecked = listEl.querySelector('.mdn-Radio-input:checked');
+    const endereco = catalog.enderecos.find((end) => end.id === radioChecked.value);
+    // Endereço recém-adicionado já passou pela tela de complemento no
+    // cadastro — não pedir de novo, segue direto pra página de produto.
+    if (endereco.recemAdicionado || endereco.complemento) {
+      irParaPaginaProduto(endereco);
+    } else {
+      abrirComplementoModal(endereco);
+    }
+  });
+
+  // Guarda o endereço escolhido (a página de produto mostra cidade/UF e CEP dele).
+  function irParaPaginaProduto(endereco) {
+    sessionStorage.setItem('enderecoConfirmado', JSON.stringify(endereco));
+    // V2: depois do endereço vem a PDP com fidelidade (pdp-v2); V1: PDP/resumo antigos
+    const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpV2) ? 'pdp-v2.html' : 'produto-detalhe.html';
+    window.location.href = destino + '?produto=' + encodeURIComponent(produto.id);
+  }
+
+  // ===== Modal "Complemento do endereço" — mesmo padrão do modal de
+  // adicionar-endereco.html, aberto aqui para um endereço já existente
+  // (selecionado na lista, não um endereço novo via CEP). O dropdown de
+  // complemento tem só 2 opções nesse fluxo, mas o comportamento de revelar
+  // um campo de texto livre pra "Quero informar meu complemento" é o mesmo. =====
+  const confirmModalEl = document.getElementById('confirmModal');
+  const complementoExistenteSelect = document.getElementById('complementoExistenteSelect');
+  const complementoExistenteOutroWrapper = document.getElementById('complementoExistenteOutroWrapper');
+  const complementoExistenteOutroInput = document.getElementById('complementoExistenteOutroInput');
+  const confirmarComplementoBtn = document.getElementById('confirmarComplementoBtn');
+  let enderecoSelecionado = null;
+
+  function abrirComplementoModal(endereco) {
+    enderecoSelecionado = endereco;
+    document.getElementById('enderecoSelecionadoDisplay').value = endereco.endereco.toUpperCase();
+    complementoExistenteSelect.value = '';
+    complementoExistenteOutroWrapper.hidden = true;
+    complementoExistenteOutroInput.value = '';
+
+    // Campos preenchidos via JS depois do init do bundle Mondrian não
+    // passam pelo evento que ativa o label flutuante sozinho — replicamos
+    // a mesma classe manualmente (mesmo esquema usado em adicionar-endereco.html).
+    confirmModalEl.querySelectorAll('.mdn-Input').forEach((wrapper) => {
+      const input = wrapper.querySelector('.mdn-Input-field');
+      wrapper.classList.toggle('mdn-Input--activatedField', !!(input && input.value));
+    });
+
+    validarComplementoExistente();
+    confirmModalEl.hidden = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => confirmModalEl.classList.add('is-open')));
+  }
+
+  // Fechar (X) -> volta pra lista de endereços, que nunca saiu da tela
+  // (mesma página) e continua com o endereço selecionado e o Continuar habilitado.
+  function fecharComplementoModal() {
+    confirmModalEl.classList.remove('is-open');
+    setTimeout(() => { confirmModalEl.hidden = true; }, 300);
+  }
+
+  complementoExistenteSelect.addEventListener('change', () => {
+    complementoExistenteSelect.closest('.mdn-Input').classList.toggle('mdn-Input--activatedField', !!complementoExistenteSelect.value);
+    const isOutro = complementoExistenteSelect.value === 'outro';
+    complementoExistenteOutroWrapper.hidden = !isOutro;
+    if (!isOutro) complementoExistenteOutroInput.value = '';
+    validarComplementoExistente();
+  });
+
+  function validarComplementoExistente() {
+    const valor = complementoExistenteSelect.value;
+    const ok = valor === 'outro'
+      ? complementoExistenteOutroInput.value.trim().length > 0
+      : valor.length > 0;
+    confirmarComplementoBtn.disabled = !ok;
+  }
+  ['input', 'keyup', 'blur'].forEach((evt) => complementoExistenteOutroInput.addEventListener(evt, validarComplementoExistente));
+
+  confirmarComplementoBtn.addEventListener('click', () => {
+    validarComplementoExistente(); // reforço: nunca confiar só no último evento do input
+    if (confirmarComplementoBtn.disabled) return;
+    enderecoSelecionado.complemento = complementoExistenteSelect.value === 'outro'
+      ? complementoExistenteOutroInput.value.trim()
+      : complementoExistenteSelect.value;
+    complementosSessao[enderecoSelecionado.id] = enderecoSelecionado.complemento;
+    sessionStorage.setItem('complementosSessao', JSON.stringify(complementosSessao));
+    irParaPaginaProduto(enderecoSelecionado);
+  });
+
+  // O Button Wrapper é fixo (position:absolute) por cima do fim da lista de
+  // endereços — sem esse ajuste, o último item fica parcialmente escondido
+  // atrás dele. Medimos a altura real (em vez de um valor fixo no CSS) pra
+  // continuar certo mesmo se o texto de um botão quebrar linha depois.
+  function ajustarEspacoRodape() {
+    const altura = document.querySelector('.button-wrapper').offsetHeight;
+    document.querySelector('.scroll-area').style.paddingBottom = (altura + 16) + 'px';
+  }
+  ajustarEspacoRodape();
+  window.addEventListener('resize', ajustarEspacoRodape);
+</script>
+
+</body>
+</html>
