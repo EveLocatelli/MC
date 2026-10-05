@@ -192,7 +192,7 @@ window.APP_CATALOG = {
             "src": "https://mondrian.claro.com.br/brands/app/32px-alternative/claro-video.svg"
           }
         ],
-        "rotulo": "Plano de internet para sua casa",
+        "rotulo": "Plano Claro Fibra",
         "titulo": "1 Giga com Globoplay",
         "textoPreco": "",
         "apps": [
@@ -402,7 +402,7 @@ window.APP_CATALOG = {
             "src": "https://mondrian.claro.com.br/brands/app/32px-alternative/claro-video.svg"
           }
         ],
-        "rotulo": "Plano de internet para sua casa",
+        "rotulo": "Plano Claro Fibra",
         "titulo": "500 Mega com Globoplay",
         "textoPreco": "",
         "apps": [
@@ -604,7 +604,7 @@ window.APP_CATALOG = {
             "src": "https://mondrian.claro.com.br/brands/app/32px-alternative/claro-video.svg"
           }
         ],
-        "rotulo": "Plano de internet para sua casa",
+        "rotulo": "Plano Claro Fibra",
         "titulo": "350 Mega com Globoplay",
         "textoPreco": "",
         "apps": [
