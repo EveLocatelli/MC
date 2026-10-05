@@ -250,6 +250,28 @@
   .anatel .t1 b{font-size:20px;font-weight:700;}
   .anatel .t2{margin:3px 0 0;font-size:12px;line-height:1.3;}
   .anatel .t2 a{color:#005c66;text-decoration:underline;}
+  /* ===== V2: tela "Pedido em análise" ===== */
+  #v2 .tit-pedido{padding:8px 16px 24px;}
+  #v2 .tit-pedido h2{margin:0;font-family:'AMX',sans-serif;font-weight:700;font-size:28px;line-height:1.3;}
+  #v2 .card-pedido{margin:0 16px 32px;background:var(--bg-light);border-radius:var(--radius-sm);padding:24px;display:flex;gap:16px;align-items:center;}
+  #v2 .card-pedido .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;line-height:1.3;}
+  #v2 .card-pedido .dt{font-weight:700;font-size:14px;color:var(--ink);}
+  #v2 .card-pedido .dt span{display:block;color:var(--gray-dark);}
+  #v2 .card-pedido .nm{font-size:16px;font-weight:500;color:var(--ink);}
+  #v2 .card-pedido .nm span{display:block;font-weight:400;color:var(--gray-dark);overflow-wrap:anywhere;}
+  #v2 .card-pedido button{display:flex;flex-shrink:0;color:var(--ink);}
+  #v2 .passo2{padding:24px 16px;display:flex;gap:8px;align-items:flex-start;}
+  #v2 .passo2 > i{font-size:24px;flex-shrink:0;color:var(--ink);}
+  #v2 .passo2 .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;font-size:16px;line-height:1.3;}
+  #v2 .passo2 .tit{margin:0;font-family:'AMX',sans-serif;font-weight:500;color:var(--ink);}
+  #v2 .passo2 .tx p{margin:0;color:var(--gray-dark);}
+  #v2 .passo2 .tx b{font-weight:700;}
+  #v2 .ln{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);overflow-wrap:anywhere;}
+  #v2 .ln b{font-weight:700;}
+  #v2 .bloco .rot{margin:0;font-family:'AMX',sans-serif;font-weight:500;color:var(--ink);}
+  #v2 .total{align-items:center;}
+  #v2 .total .k, #v2 .total .big{font-size:24px;}
+  #v2 .anatel i{font-size:24px;}
 </style>
 </head>
 <body>
@@ -267,6 +289,7 @@
   </div>
 
   <div class="scroll-area" id="scrollArea">
+    <div id="v1">
     <div class="app-bar">
       <h1>Concluído!</h1>
       <button type="button" class="close-btn" id="closeBtn" aria-label="Fechar">
@@ -365,6 +388,90 @@
       </div>
     </section>
     <div class="divider-section"><div class="piece piece--top"></div></div>
+    </div>
+
+    <div id="v2" hidden>
+      <div class="app-bar">
+        <h1>Pedido</h1>
+        <button type="button" class="close-btn" id="closeBtn2" aria-label="Fechar">
+          <span class="mdn-Icon-fechar mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="tit-pedido"><h2>Pedido em análise</h2></div>
+      <div class="card-pedido">
+        <div class="tx">
+          <p class="dt" style="margin:0">Data:<span id="b_data"></span></p>
+          <p class="nm" style="margin:0">Número do pedido:<span id="b_numero"></span></p>
+        </div>
+        <button type="button" id="copiarBtn2" aria-label="Copiar número do pedido"><i class="mdn-Icon-quadrados-copiar mdn-Icon--md" aria-hidden="true"></i></button>
+      </div>
+
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+      <section>
+        <div class="sec-head"><p class="eyebrow">Próximos passos</p><p class="h3">Como vai funcionar agora?</p></div>
+        <div class="passo2" style="padding-top:32px">
+          <i class="mdn-Icon-e-mail mdn-Icon--md" aria-hidden="true"></i>
+          <div class="tx"><p class="tit">1 . Confirmação</p><p>Após a análise do seu pedido, confirmaremos os próximos passos via <b>e-mail</b> e <b>SMS</b>.</p></div>
+        </div>
+        <div class="divider"></div>
+        <div class="passo2">
+          <i class="mdn-Icon-calendario mdn-Icon--md" aria-hidden="true"></i>
+          <div class="tx"><p class="tit">2 . Instalação</p><p>O técnico chegará à sua casa no dia agendado para fazer a instalação. Você poderá acompanhar tudo pelo app.</p></div>
+        </div>
+        <div class="divider"></div>
+        <div class="passo2">
+          <i class="mdn-Icon-codigo-de-barras mdn-Icon--md" aria-hidden="true"></i>
+          <div class="tx"><p class="tit">3 . Fatura</p><p>O valor da sua primeira fatura será proporcional, contando da instalação até o fechamento.</p></div>
+        </div>
+      </section>
+
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+      <section>
+        <div class="sec-head"><p class="eyebrow">Resumo da compra</p></div>
+        <div class="produto" id="b_produto"></div>
+        <div class="divider"></div>
+        <div class="sec-head" style="padding-top:32px"><p class="eyebrow">Instalação</p><p class="h3">Endereço de instalação</p></div>
+        <div class="bloco">
+          <p class="rot">Endereço</p>
+          <div class="tx" id="b_endereco"></div>
+        </div>
+        <div class="bloco" style="padding-top:0">
+          <p class="rot">Data</p>
+          <div class="tx" id="b_data_inst"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="campo"><p class="eyebrow">Fidelidade</p><p class="v" id="b_fidelidade"></p></div>
+        <div class="divider"></div>
+        <div class="campo"><p class="eyebrow">Vencimento da fatura</p><p class="v" id="b_vencimento"></p></div>
+        <div class="divider"></div>
+        <div class="taxas">
+          <p class="eyebrow">Taxas e adicionais</p>
+          <div class="linha"><span class="k">Valor mensal</span><span class="v" id="b_mensal"></span></div>
+          <div class="linha"><span class="k">Instalação</span><span class="v" id="b_instalacao"></span></div>
+          <div class="linha"><span class="k">Adesão <i class="mdn-Icon-circulo-i" aria-hidden="true"></i></span><span class="v" id="b_adesao"></span></div>
+        </div>
+        <div class="divider"></div>
+        <div class="total"><span class="k">Total</span><div class="pv"><span class="big" id="b_total"></span></div></div>
+      </section>
+
+      <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+
+      <section>
+        <div class="num">
+          <p class="eyebrow">Código da sua oferta</p>
+          <div class="anatel">
+            <i class="mdn-Icon-codigo-de-barras" aria-hidden="true"></i>
+            <div>
+              <div class="t1">O código de etiqueta padrão da sua oferta é: <b id="b_codigo"></b></div>
+              <p class="t2">Para saber mais sobre a documentação do seu plano registrado na Anatel, <a href="#" id="anatelLink2">acesse aqui</a>.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="divider-section"><div class="piece piece--top"></div></div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -452,10 +559,52 @@
   $('anatelLink').addEventListener('click', (e) => { e.preventDefault(); showToast('Documentação da Anatel ainda não implementada'); });
 
   // Fechar: encerra a jornada e volta para a vitrine
-  $('closeBtn').addEventListener('click', () => {
+  function fecharJornada() {
     ['pedidoConcluido', 'enderecoConfirmado', 'complementosSessao', 'fidelidade'].forEach((k) => sessionStorage.removeItem(k));
     location.href = 'ofertas-fibra.html';
-  });
+  }
+  $('closeBtn').addEventListener('click', fecharJornada);
+
+  // ===== V2: "Pedido em análise" (Figma) — mesmos dados, outro arranjo =====
+  if (window.APP_VERSION && window.APP_VERSION.flags.conclusaoV2) {
+    $('v1').hidden = true; $('v2').hidden = false;
+    $('closeBtn2').addEventListener('click', fecharJornada);
+    $('b_data').textContent = ped.dataPedido;
+    $('b_numero').textContent = $('numeroPedido').textContent;
+    $('copiarBtn2').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText($('b_numero').textContent); showToast('Número do pedido copiado'); }
+      catch (e) { showToast('Não foi possível copiar'); }
+    });
+    $('b_produto').innerHTML = $('produto').innerHTML;
+    $('b_fidelidade').textContent = $('fidelidade').textContent;
+    $('b_vencimento').textContent = $('vencimento').textContent;
+    $('b_mensal').textContent = $('tMensal').textContent;
+    $('b_instalacao').textContent = $('tInstalacao').textContent;
+    $('b_adesao').textContent = $('tAdesao').textContent;
+    $('b_total').textContent = $('totalValor').textContent;
+    $('b_codigo').textContent = c.codigoOferta;
+    $('anatelLink2').addEventListener('click', (e) => { e.preventDefault(); showToast('Documentação da Anatel ainda não implementada'); });
+
+    // Endereço: logradouro/bairro em negrito, complemento, cidade - UF e CEP em linhas separadas
+    const e = ped.endEstruturado;
+    const linhasEnd = [];
+    if (e) {
+      linhasEnd.push(`<b>${[e.logradouro, e.numero, e.bairro].filter(Boolean).join(', ')}</b>`);
+      if (e.complemento) linhasEnd.push(`Complemento: ${e.complemento}`);
+      linhasEnd.push(e.cidade);
+      linhasEnd.push(`CEP: ${e.cep}`);
+      if (e.referencia) linhasEnd.push(e.referencia);
+    } else {
+      linhasEnd.push(`<b>${ped.endereco}</b>`);
+    }
+    $('b_endereco').innerHTML = linhasEnd.map((l) => `<p class="ln">${l}</p>`).join('');
+
+    // Data: "30/04 (quarta-feira)" / "Período da manhã das 08:00 até 12:00"
+    const [diaSemana, dataCurta] = (ped.dia || '').split(' ');
+    const [h1, h2] = (ped.horario || '').match(/\d{2}:\d{2}/g) || [];
+    $('b_data_inst').innerHTML = `<p class="ln"><b>${dataCurta || ''}</b> (${(diaSemana || '').toLowerCase()})</p>`
+      + `<p class="ln">Período da <b>${(ped.periodo || '').toLowerCase()}</b> das <b>${h1 || ''} até ${h2 || ''}</b></p>`;
+  }
 </script>
 </body>
 </html>

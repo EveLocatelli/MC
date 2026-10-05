@@ -22,6 +22,8 @@
         agendamentoDataPrimeiro: false,
         // Formas de pagamento: sem o texto de apoio "Sem desconto nesta forma de pagamento"
         pagamentoSemTextoApoio: false,
+        // Tela de conclusão: layout "Pedido em análise" (data e número no topo, endereço detalhado)
+        conclusaoV2: false,
       },
     },
     v2: {
@@ -37,6 +39,7 @@
         dadosResumoComLabels: true,
         agendamentoDataPrimeiro: true,
         pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
       },
     },
   };

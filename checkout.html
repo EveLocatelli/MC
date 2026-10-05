@@ -229,12 +229,13 @@
   .summary .tx .l p{margin:0;overflow-wrap:anywhere;}
   .summary .edit{flex-shrink:0;color:var(--ink);display:flex;}
 
-  /* V2: resumo dos dados pessoais com rótulo em negrito em cada dado (margens de 16px do Figma) */
-  #stepDados.com-labels .step-head{padding:0 16px;}
+  /* V2: resumo de cada etapa com rótulo em negrito em cada dado (margens de 16px do Figma) */
+  .step.com-labels .step-head{padding:0 16px;}
   #stepDados.com-labels .step-body{padding-left:16px;padding-right:16px;}
-  #stepDados.com-labels .summary{padding:16px;gap:16px;}
-  #stepDados.com-labels .summary .tx{padding:4px;gap:8px;}
-  #stepDados.com-labels .summary .tx .l{display:flex;flex-direction:column;gap:8px;}
+  .step.com-labels .summary{padding:16px;gap:16px;}
+  .step.com-labels .summary .tx{padding:4px;gap:8px;}
+  .step.com-labels .summary .tx .l{display:flex;flex-direction:column;gap:8px;}
+  .summary .tx .l .item .vl.multi{white-space:pre-line;overflow-wrap:anywhere;}
   .summary .tx .l .item p{margin:0;font-size:16px;line-height:1.3;color:var(--gray-dark);}
   .summary .tx .l .item .lb{font-weight:700;}
   .summary .tx .l .item .vl{font-weight:400;}
@@ -535,6 +536,7 @@
               <p class="n" id="endResLinha"></p>
               <p class="rf" id="endResRef" hidden></p>
               <p class="rf" id="endResComp" hidden></p>
+              <div class="l" id="endResItens" hidden></div>
             </div>
             <button type="button" class="edit" id="endEditar" aria-label="Editar endereço">
               <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
@@ -569,6 +571,7 @@
           <div class="tx">
             <p class="n" id="instResPeriodo"></p>
             <div class="l" id="instResData"></div>
+            <div class="l" id="instResItens" hidden></div>
           </div>
           <button type="button" class="edit" id="instEditar" aria-label="Editar agendamento">
             <i class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></i>
@@ -842,6 +845,17 @@
 
   // ===== Etapa concluída vira resumo editável =====
   const CHAVE_DADOS = 'checkoutDados';
+  // V2: todos os resumos (dados, endereço, agendamento, pagamento) com rótulo em negrito em cada dado
+  const resumoComLabels = !!(window.APP_VERSION && window.APP_VERSION.flags.dadosResumoComLabels);
+  const htmlItens = (itens) => itens.map(() => '<div class="item"><p class="lb"></p><p class="vl multi"></p></div>').join('');
+  function preencherItens(el, itens) {
+    el.innerHTML = htmlItens(itens);
+    [...el.children].forEach((it, i) => {
+      it.querySelector('.lb').textContent = itens[i][0];
+      it.querySelector('.vl').textContent = itens[i][1];
+    });
+  }
+  if (resumoComLabels) ['stepEndereco', 'stepInstalacao', 'stepPagamento'].forEach((id) => $(id).classList.add('com-labels'));
   function salvarDados() {
     const d = { semRg: semRg.checked };
     editaveis.forEach((n) => { d[n] = campos[n].value; });
@@ -936,6 +950,28 @@
     partes.splice(Math.min(2, partes.length), 0, comp);
     return partes.join(', ').toUpperCase();
   }
+  // Separa "Logradouro, nº, [compl.,] Bairro - Cidade/UF - CEP: ..." em duas linhas:
+  // "Logradouro, nº, [compl.,] Bairro" e "Cidade/UF - CEP: ...".
+  function partirEndereco(txt) {
+    const i = txt.indexOf(' - ');
+    return i < 0 ? [txt, ''] : [txt.slice(0, i), txt.slice(i + 3)];
+  }
+  function enderecoEstruturado() {
+    const segs = capitalizarEndereco(enderecoParaModal()).split(' - ');
+    const cep = (segs.pop() || '').replace(/^cep:?\s*/i, '').trim();
+    let cidade = '', bairro = '';
+    let partes;
+    if (segs.length >= 2) {            // "Logradouro, nº, [compl.,] Bairro - Cidade/UF"
+      cidade = segs.pop().trim();
+      partes = segs.join(' - ').split(', ');
+      if (partes.length >= 3) bairro = partes.pop();
+    } else {                           // sem bairro: "Logradouro, nº, [compl.,] Cidade/UF"
+      partes = (segs[0] || '').split(', ');
+      cidade = (partes.pop() || '').trim();
+    }
+    const [logradouro, numero, ...compl] = partes;
+    return { logradouro: logradouro || '', numero: numero || '', bairro, complemento: compl.join(', '), cidade: cidade.replace('/', ' - '), cep, referencia: refEndereco };
+  }
   $('sheetLinha').textContent = capitalizarEndereco(enderecoParaModal());
   preencher('sheetRef', refEndereco);
 
@@ -964,6 +1000,16 @@
     $('endBadge').hidden = !ok;
     $('stepEndereco').classList.toggle('is-active', !ok);
     $('stepEndereco').classList.toggle('is-done', ok);
+    if (resumoComLabels) {
+      // V2: título "Endereço de entrega" e card com o rótulo "Endereço" em negrito
+      $('stepEndereco').querySelector('.name').textContent = ok ? 'Endereço de entrega' : 'Confirme seu endereço';
+      if (ok) {
+        const [l1, l2] = partirEndereco(capitalizarEndereco(enderecoParaModal()));
+        $('endResLinha').hidden = true; $('endResRef').hidden = true; $('endResComp').hidden = true;
+        $('endResItens').hidden = false;
+        preencherItens($('endResItens'), [['Endereço', [l1, l2, refEndereco].filter(Boolean).join('\n')]]);
+      }
+    }
     if (ok) ativarInstalacao(); else travarInstalacao();
   }
 
@@ -1147,12 +1193,17 @@
     const meses = mesesFaturas();
     const preco = (catalog.produtos[produtoId] || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]]).preco;
     const debito = formaPag === 'debito';
-    $('pagResumo').innerHTML = `
-      <div class="summary"><div class="tx">
+    // V2: card com rótulos ("Pagamento via", "Banco", "Agência", "Conta", "Vencimento", "Envio por");
+    // V1: nome da forma + vencimento + nota
+    const cardForma = resumoComLabels
+      ? `<div class="summary"><div class="tx"><div class="l" id="pagResItens"></div></div>${IC_EDIT}</div>`
+      : `<div class="summary"><div class="tx">
         <p class="n">${debito ? 'Débito em conta' : 'Boleto'}</p>
         <p class="sub">Vencimento todo dia ${vencPag}</p>
         <p class="nota">Você só começa a pagar seu novo plano após a instalação da sua internet.</p>
-      </div>${IC_EDIT}</div>
+      </div>${IC_EDIT}</div>`;
+    $('pagResumo').innerHTML = `
+      ${cardForma}
       <div class="summary"><div class="tx faturas">
         <p class="t">Próximas 3 faturas</p>
         <p class="d">Considerando seu plano, taxas e compras extras, se houver.</p>
@@ -1165,6 +1216,13 @@
         <i class="mdn-Icon-circulo-exclamacao" aria-hidden="true"></i>
         <div><p>Fatura unificada</p><p>Plano celular e internet estarão em uma única fatura.</p><p>O pagamento do novo plano começará depois que a internet for instalada.</p></div>
       </div>`;
+    if (resumoComLabels) {
+      const bancoNome = debito ? (pagDados.bancos[pagCampos.banco.selectedIndex - 1] || pagCampos.banco.value) : '';
+      const itens = [['Pagamento via', debito ? 'Débito em conta' : 'Boleto']];
+      if (debito) itens.push(['Banco', bancoNome], ['Agência', pagCampos.agencia.value], ['Conta', `${pagCampos.conta.value}-${pagCampos.digito.value}`]);
+      itens.push(['Vencimento', `Dia ${vencPag}`], ['Envio por', faturaPag === 'email' ? 'E-mail' : 'Correios']);
+      preencherItens($('pagResItens'), itens);
+    }
     $('pagBody').hidden = true;
     $('pagResumo').hidden = false;
     $('pagBadge').hidden = false;
@@ -1215,6 +1273,7 @@
       nome: campos.nome.value.trim(),
       endereco: capitalizarEndereco(enderecoParaModal()),
       referencia: refEndereco,
+      endEstruturado: enderecoEstruturado(),
       dia: `${d.diaCompleto} ${d.data}`,
       periodo: p.nome, horario: p.horario,
       forma: formaPag, fatura: faturaPag, vencimento: vencPag,
@@ -1254,6 +1313,16 @@
     $('instResData').innerHTML = `<p></p><p></p>`;
     $('instResData').firstElementChild.textContent = `No período da ${p.nome.toLowerCase()}`;
     $('instResData').lastElementChild.textContent = horario;
+    if (resumoComLabels) {
+      // V2: "Data da instalação" / "Período" / "Horário" com rótulo em negrito (Figma)
+      const [h1, h2] = p.horario.match(/\d{2}:\d{2}/g) || [];
+      $('instResPeriodo').hidden = true; $('instResData').hidden = true; $('instResItens').hidden = false;
+      preencherItens($('instResItens'), [
+        ['Data da instalação', `${d.data}/${d.date.getFullYear()} - ${d.diaCompleto}`],
+        ['Período', p.nome],
+        ['Horário', `das ${h1} até ${h2}`],
+      ]);
+    }
     $('instBody').hidden = true; $('instResumo').hidden = false; $('instBadge').hidden = false;
     $('stepInstalacao').classList.add('is-done');
   }
