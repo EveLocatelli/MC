@@ -24,6 +24,8 @@
         pagamentoSemTextoApoio: false,
         // Tela de conclusão: layout "Pedido em análise" (data e número no topo, endereço detalhado)
         conclusaoV2: false,
+        // Modal de cobertura (novo endereço): V1 mostra só "Número: …, CEP: …" como no ar; V2 mostra o endereço completo
+        coberturaComEnderecoCompleto: false,
       },
     },
     v2: {
@@ -40,6 +42,7 @@
         agendamentoDataPrimeiro: true,
         pagamentoSemTextoApoio: true,
         conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
       },
     },
   };

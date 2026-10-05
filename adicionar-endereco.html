@@ -709,6 +709,13 @@
     bottomSheetEl.addEventListener('pointercancel', onPointerUp);
   })();
 
+  // Texto do endereço no modal de cobertura. No ar (V1) o modal mostra só número e CEP;
+  // a V2 (flag coberturaComEnderecoCompleto) mostra o endereço completo.
+  function textoEnderecoSheet(resultado) {
+    const completo = !!(window.APP_VERSION && window.APP_VERSION.flags.coberturaComEnderecoCompleto);
+    return completo ? resultado.endereco : `Número: ${resultado.numero}, CEP: ${resultado.cep}`;
+  }
+
   function renderSheetDisponivel(resultado) {
     document.getElementById('sheetBody').innerHTML = `
       <p class="message is-success">Este plano tem cobertura no novo endereço adicionado.</p>
@@ -717,7 +724,7 @@
         Disponível neste endereço
       </div>
       <div class="address-box">
-        <p>${resultado.endereco}</p>
+        <p>${textoEnderecoSheet(resultado)}</p>
         <button type="button" class="edit-btn" aria-label="Editar endereço" onclick="editarEndereco()">
           <span class="mdn-Icon-lapis mdn-Icon--md" aria-hidden="true"></span>
         </button>
@@ -880,7 +887,7 @@
 
     let resultado;
     if (digits === CEP_TESTE_INDISPONIVEL) {
-      resultado = { tipo: 'indisponivel', endereco: montarEndereco({ logradouro: 'Rua Não Viável', numero, bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', cep: cepFormatado }) };
+      resultado = { tipo: 'indisponivel', numero, cep: cepFormatado, endereco: montarEndereco({ logradouro: 'Rua Não Viável', numero, bairro: 'Centro', cidade: 'São Paulo', uf: 'SP', cep: cepFormatado }) };
     } else {
       try {
         const resp = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
@@ -912,7 +919,7 @@
       if (resultado.tipo === 'disponivel') {
         renderSheetDisponivel(resultado);
       } else if (resultado.tipo === 'indisponivel') {
-        renderSheetIndisponivel(resultado.endereco, 'Conferir outras ofertas', () => {
+        renderSheetIndisponivel(textoEnderecoSheet(resultado), 'Conferir outras ofertas', () => {
           showToast('Próxima tela ainda não implementada');
         });
       } else {
