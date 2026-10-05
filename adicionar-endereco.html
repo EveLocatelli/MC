@@ -522,14 +522,13 @@
       <p class="intro">Digite abaixo os dados do novo endereço para instalação da internet fixa.</p>
 
       <div class="mdn-Input">
-        <input class="mdn-Input-field" id="cepDisplay" type="text" value="" readonly>
+        <input class="mdn-Input-field" id="cepDisplay" type="text" value="" disabled>
         <label for="cepDisplay" class="mdn-Input-label">CEP</label>
       </div>
 
       <div class="mdn-Input">
         <input class="mdn-Input-field" id="estadoDisplay" type="text" value="" disabled>
         <label for="estadoDisplay" class="mdn-Input-label">Estado</label>
-        <span class="select-icon"><em aria-hidden="true" class="mdn-Icon-baixo mdn-Icon--sm"></em></span>
       </div>
 
       <div class="mdn-Input">
@@ -538,12 +537,12 @@
       </div>
 
       <div class="mdn-Input">
-        <input class="mdn-Input-field" id="bairroDisplay" type="text" value="" disabled>
+        <input class="mdn-Input-field" id="bairroDisplay" type="text" value="" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
         <label for="bairroDisplay" class="mdn-Input-label">Bairro</label>
       </div>
 
       <div class="mdn-Input">
-        <input class="mdn-Input-field" id="logradouroDisplay" type="text" value="" disabled>
+        <input class="mdn-Input-field" id="logradouroDisplay" type="text" value="" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
         <label for="logradouroDisplay" class="mdn-Input-label">Logradouro</label>
       </div>
 
@@ -748,12 +747,12 @@
 
   function abrirConfirmModal(dados) {
     dadosEndereco = dados;
-    document.getElementById('cepDisplay').value = dados.cep || '';
-    document.getElementById('estadoDisplay').value = dados.uf || '';
-    document.getElementById('cidadeDisplay').value = dados.cidade || '';
-    document.getElementById('bairroDisplay').value = dados.bairro || '';
-    document.getElementById('logradouroDisplay').value = dados.logradouro || '';
-    document.getElementById('numeroDisplay').value = dados.numero || '';
+    document.getElementById('cepDisplay').value = (dados.cep || '').toUpperCase();
+    document.getElementById('estadoDisplay').value = (dados.uf || '').toUpperCase();
+    document.getElementById('cidadeDisplay').value = (dados.cidade || '').toUpperCase();
+    document.getElementById('bairroDisplay').value = (dados.bairro || '').toUpperCase();
+    document.getElementById('logradouroDisplay').value = (dados.logradouro || '').toUpperCase();
+    document.getElementById('numeroDisplay').value = (dados.numero || '').toUpperCase();
     complementoSelect.value = '';
     complementoOutroWrapper.hidden = true;
     complementoOutroInput.value = '';
@@ -771,6 +770,17 @@
     confirmModalEl.hidden = false;
     requestAnimationFrame(() => requestAnimationFrame(() => confirmModalEl.classList.add('is-open')));
   }
+
+  // Bairro e logradouro vêm do CEP, mas o usuário pode corrigir; o texto fica sempre em maiúsculas
+  ['bairroDisplay', 'logradouroDisplay'].forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      const ini = el.selectionStart, fim = el.selectionEnd;
+      el.value = el.value.toUpperCase();
+      try { el.setSelectionRange(ini, fim); } catch (e) {}
+      el.closest('.mdn-Input').classList.toggle('mdn-Input--activatedField', !!el.value);
+    });
+  });
 
   // Fechar (X) -> volta pro formulário de CEP/Número, que nunca saiu da
   // tela (mesma página) e continua com os dados digitados e o Continuar habilitado.
@@ -808,6 +818,8 @@
     const referencia = referenciaInput.value.trim();
     dadosEndereco.complemento = complemento;
     dadosEndereco.referencia = referencia;
+    dadosEndereco.bairro = document.getElementById('bairroDisplay').value.trim();
+    dadosEndereco.logradouro = document.getElementById('logradouroDisplay').value.trim();
 
     // Endereço final com o complemento já embutido na linha, mesmo formato
     // usado pelos endereços que já vêm prontos da planilha (ex: "..., 780,
