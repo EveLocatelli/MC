@@ -459,6 +459,8 @@
     const overlay = document.getElementById('loadingOverlay');
     overlay.hidden = false;
     setTimeout(() => {
+      // Nova jornada: o complemento informado em tentativas anteriores não vale mais (a tela de complemento volta a ser pedida)
+      try { sessionStorage.removeItem('complementosSessao'); } catch (e) {}
       window.location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produtoId || '');
     }, 2000);
   });

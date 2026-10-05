@@ -295,6 +295,7 @@
   // "Aproveitar essa oferta" faz o mesmo que "Eu quero" na vitrine: spinner de 2s e seleção de endereço
   $('aproveitarBtn').addEventListener('click', () => {
     $('loadingOverlay').hidden = false;
+    try { sessionStorage.removeItem('complementosSessao'); } catch (e) {}
     setTimeout(() => { location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produto.id); }, 2000);
   });
   // A barra fixa fica por cima do fim da tela: reserva o espaço medindo a altura real
