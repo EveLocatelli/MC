@@ -433,6 +433,19 @@
     color:var(--ink);
     flex-shrink:0;
   }
+  /* Complemento obrigatório ainda não informado: contorno laranja + alerta (Figma "Informar complemento") */
+  .confirm-modal .mdn-Input.is-alerta .mdn-Input-field{border-color:var(--warn-text);}
+  .confirm-modal .helper-alerta{
+    margin:4px 0 0;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    color:var(--warn-text);
+  }
   .confirm-modal .select-icon{
     position:absolute;
     right:16px;
@@ -440,6 +453,7 @@
     transform:translateY(-50%);
     pointer-events:none;
     color:var(--gray-dark);
+    opacity:.4;
   }
   /* Botão fixo do rodapé — mesmo componente "Button / Button Configuration"
      do Mondrian usado em adicionar-endereco.html: largura inteira, sem
@@ -540,38 +554,75 @@
     </div>
 
     <div class="app-bar">
-      <h1>Complemento do endereço</h1>
+      <h1>Novo endereço</h1>
       <button type="button" class="close-btn" aria-label="Fechar" onclick="fecharComplementoModal()">
         <span class="mdn-Icon-fechar mdn-Icon--md" aria-label="fechar"></span>
       </button>
     </div>
 
     <div class="form-section">
-      <p class="intro">Confirme o complemento para instalação da internet fixa.</p>
+      <p class="intro">Digite abaixo os dados do novo endereço para instalação da internet fixa.</p>
 
       <div class="mdn-Input">
-        <input class="mdn-Input-field" id="enderecoSelecionadoDisplay" type="text" value="" disabled>
-        <label for="enderecoSelecionadoDisplay" class="mdn-Input-label">Endereço</label>
+        <input class="mdn-Input-field" id="cepDisplay" type="text" value="" disabled>
+        <label for="cepDisplay" class="mdn-Input-label">CEP</label>
       </div>
 
       <div class="mdn-Input">
-        <select id="complementoExistenteSelect" class="mdn-Input-field" data-mdn-type="select" style="background-image:none">
-          <option value="" selected>Selecione</option>
-          <option value="Sem complemento">Sem complemento</option>
-          <option value="outro">Quero informar meu complemento</option>
-        </select>
-        <span class="mdn-Icon-baixo mdn-Icon--md mdn-Input-select-arrow"></span>
-        <label for="complementoExistenteSelect" class="mdn-Input-label">Complemento *</label>
+        <input class="mdn-Input-field" id="estadoDisplay" type="text" value="" disabled>
+        <span class="mdn-Icon-baixo mdn-Icon--sm select-icon" aria-hidden="true"></span>
+        <label for="estadoDisplay" class="mdn-Input-label">Estado</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="cidadeDisplay" type="text" value="" disabled>
+        <label for="cidadeDisplay" class="mdn-Input-label">Cidade</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="bairroDisplay" type="text" value="" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
+        <label for="bairroDisplay" class="mdn-Input-label">Bairro</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="logradouroDisplay" type="text" value="" autocomplete="off" autocapitalize="characters" style="text-transform:uppercase">
+        <label for="logradouroDisplay" class="mdn-Input-label">Logradouro</label>
+      </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="numeroDisplay" type="text" value="" disabled>
+        <label for="numeroDisplay" class="mdn-Input-label">Número</label>
+      </div>
+
+      <div>
+        <div class="mdn-Input" id="complementoWrapper">
+          <select id="complementoExistenteSelect" class="mdn-Input-field" data-mdn-type="select" style="background-image:none">
+            <option value="" selected>Selecione</option>
+            <option value="Sem complemento">Sem complemento</option>
+            <option value="outro">Quero informar meu complemento</option>
+          </select>
+          <span class="mdn-Icon-baixo mdn-Icon--md mdn-Input-select-arrow"></span>
+          <label for="complementoExistenteSelect" class="mdn-Input-label">Complemento *</label>
+        </div>
+        <p class="helper-alerta" id="complementoAlerta">
+          <i class="mdn-Icon-circulo-exclamacao mdn-Icon--md" aria-hidden="true"></i>
+          <span>Informe o complemento</span>
+        </p>
       </div>
 
       <div class="mdn-Input" id="complementoExistenteOutroWrapper" hidden>
         <input class="mdn-Input-field" id="complementoExistenteOutroInput" type="text" value="">
         <label for="complementoExistenteOutroInput" class="mdn-Input-label">Complemento</label>
       </div>
+
+      <div class="mdn-Input">
+        <input class="mdn-Input-field" id="referenciaInput" type="text" value="">
+        <label for="referenciaInput" class="mdn-Input-label">Referência (opcional)</label>
+      </div>
     </div>
 
     <button type="button" class="btn-footer" id="confirmarComplementoBtn" disabled>
-      <span class="label">Continuar</span>
+      <span class="label">Adicionar endereço</span>
       <span class="mdn-Icon-seta-direita mdn-Icon--md" aria-hidden="true"></span>
     </button>
   </div>
@@ -654,6 +705,14 @@
   // ao voltar da página de produto, o mesmo endereço não pede o complemento de novo.
   const complementosSessao = parseJSON('complementosSessao', {});
   catalog.enderecos.forEach((e) => { if (complementosSessao[e.id]) e.complemento = complementosSessao[e.id]; });
+  // Bairro, logradouro e referência corrigidos na tela "Novo endereço" (endereços da lista)
+  const enderecosEditados = parseJSON('enderecosEditados', {});
+  function aplicarEdicao(e, ed) {
+    const d = separarEndereco(e.endereco);
+    e.endereco = montarEnderecoTexto({ ...d, logradouro: ed.logradouro || d.logradouro, bairro: ed.bairro });
+    e.referencia = ed.referencia;
+  }
+  catalog.enderecos.forEach((e) => { if (enderecosEditados[e.id]) aplicarEdicao(e, enderecosEditados[e.id]); });
   catalog.enderecos.forEach((e) => { if (e.id === selecionadoId && e.disponivel) e.selecionado = true; });
 
   const listEl = document.getElementById('addressList');
@@ -736,12 +795,41 @@
   const confirmarComplementoBtn = document.getElementById('confirmarComplementoBtn');
   let enderecoSelecionado = null;
 
+  // O catálogo guarda o endereço como texto ("RUA X, 19, BAIRRO - CIDADE/UF - CEP 00000-000");
+  // aqui ele é separado nos campos que a tela de "Novo endereço" mostra.
+  // Se houver complemento no meio do texto (ex: "..., 780, Torre A, Bairro"), ele é ignorado.
+  function separarEndereco(txt) {
+    const partes = txt.split(' - ');
+    const cep = (partes.pop() || '').replace(/^cep:?\s*/i, '').trim();
+    const [cidade, uf] = (partes.length > 1 ? partes.pop() : '').split('/');
+    const rua = (partes.join(' - ') || '').split(', ');
+    const [logradouro, numero] = rua;
+    const bairro = rua.length > 2 ? rua[rua.length - 1] : '';
+    return { logradouro: logradouro || '', numero: numero || '', bairro, cidade: (cidade || '').trim(), uf: (uf || '').trim(), cep };
+  }
+  function montarEnderecoTexto({ logradouro, numero, bairro, cidade, uf, cep }) {
+    const rua = [logradouro, numero, bairro].filter(Boolean).join(', ');
+    return `${rua} - ${cidade}/${uf} - CEP: ${cep}`.toUpperCase();
+  }
+
+  const bairroDisplay = document.getElementById('bairroDisplay');
+  const logradouroDisplay = document.getElementById('logradouroDisplay');
+  const referenciaInput = document.getElementById('referenciaInput');
+  let dadosEndereco = null;
+
   function abrirComplementoModal(endereco) {
     enderecoSelecionado = endereco;
-    document.getElementById('enderecoSelecionadoDisplay').value = endereco.endereco.toUpperCase();
+    dadosEndereco = separarEndereco(endereco.endereco);
+    document.getElementById('cepDisplay').value = dadosEndereco.cep.toUpperCase();
+    document.getElementById('estadoDisplay').value = dadosEndereco.uf.toUpperCase();
+    document.getElementById('cidadeDisplay').value = dadosEndereco.cidade.toUpperCase();
+    bairroDisplay.value = dadosEndereco.bairro.toUpperCase();
+    logradouroDisplay.value = dadosEndereco.logradouro.toUpperCase();
+    document.getElementById('numeroDisplay').value = dadosEndereco.numero.toUpperCase();
     complementoExistenteSelect.value = '';
     complementoExistenteOutroWrapper.hidden = true;
     complementoExistenteOutroInput.value = '';
+    referenciaInput.value = endereco.referencia || '';
 
     // Campos preenchidos via JS depois do init do bundle Mondrian não
     // passam pelo evento que ativa o label flutuante sozinho — replicamos
@@ -755,6 +843,16 @@
     confirmModalEl.hidden = false;
     requestAnimationFrame(() => requestAnimationFrame(() => confirmModalEl.classList.add('is-open')));
   }
+
+  // Bairro e logradouro vêm do cadastro, mas o usuário pode corrigir; o texto fica sempre em maiúsculas
+  [bairroDisplay, logradouroDisplay].forEach((el) => {
+    el.addEventListener('input', () => {
+      const ini = el.selectionStart, fim = el.selectionEnd;
+      el.value = el.value.toUpperCase();
+      try { el.setSelectionRange(ini, fim); } catch (e) {}
+      el.closest('.mdn-Input').classList.toggle('mdn-Input--activatedField', !!el.value);
+    });
+  });
 
   // Fechar (X) -> volta pra lista de endereços, que nunca saiu da tela
   // (mesma página) e continua com o endereço selecionado e o Continuar habilitado.
@@ -777,6 +875,10 @@
       ? complementoExistenteOutroInput.value.trim().length > 0
       : valor.length > 0;
     confirmarComplementoBtn.disabled = !ok;
+    // Complemento ainda sem escolha: contorno laranja + "Informe o complemento" (Figma)
+    const semEscolha = valor.length === 0;
+    document.getElementById('complementoWrapper').classList.toggle('is-alerta', semEscolha);
+    document.getElementById('complementoAlerta').hidden = !semEscolha;
   }
   ['input', 'keyup', 'blur'].forEach((evt) => complementoExistenteOutroInput.addEventListener(evt, validarComplementoExistente));
 
@@ -788,6 +890,11 @@
       : complementoExistenteSelect.value;
     complementosSessao[enderecoSelecionado.id] = enderecoSelecionado.complemento;
     sessionStorage.setItem('complementosSessao', JSON.stringify(complementosSessao));
+    // Bairro/logradouro corrigidos e referência: valem para este endereço dali em diante
+    const edicao = { logradouro: logradouroDisplay.value.trim(), bairro: bairroDisplay.value.trim(), referencia: referenciaInput.value.trim() };
+    enderecosEditados[enderecoSelecionado.id] = edicao;
+    sessionStorage.setItem('enderecosEditados', JSON.stringify(enderecosEditados));
+    aplicarEdicao(enderecoSelecionado, edicao);
     irParaPaginaProduto(enderecoSelecionado);
   });
 

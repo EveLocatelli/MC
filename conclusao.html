@@ -560,7 +560,7 @@
 
   // Fechar: encerra a jornada e volta para a vitrine
   function fecharJornada() {
-    ['pedidoConcluido', 'enderecoConfirmado', 'complementosSessao', 'fidelidade'].forEach((k) => sessionStorage.removeItem(k));
+    ['pedidoConcluido', 'enderecoConfirmado', 'complementosSessao', 'enderecosEditados', 'fidelidade'].forEach((k) => sessionStorage.removeItem(k));
     location.href = 'ofertas-fibra.html';
   }
   $('closeBtn').addEventListener('click', fecharJornada);
