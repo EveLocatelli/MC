@@ -46,7 +46,8 @@
       flags: {
         // Alterar endereço no checkout: no ar hoje refaz a jornada (inclusive dados pessoais)
         manterDadosAoAlterarEndereco: false,
-        // Vitrine: link "Mais detalhes" no card, abaixo do botão "Eu quero"
+        // Vitrine: link "Mais detalhes" no card, abaixo do botão "Eu quero".
+        // TEMPORARIAMENTE DESLIGADO em todas as versões (V2 e testes A/B). Para voltar no futuro: maisDetalhesNoCard: true na versão desejada.
         maisDetalhesNoCard: false,
         // Depois do endereço, a V2 abre a PDP com toggle de fidelidade (pdp-v2) em vez da PDP/resumo antigos
         pdpV2: false,
@@ -83,7 +84,7 @@
       flags: {
         // Melhorias entram aqui conforme forem definidas, tela a tela.
         manterDadosAoAlterarEndereco: false,
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
@@ -110,7 +111,7 @@
       descricao: 'V2 com a PDP logo após selecionar a oferta, antes do endereço.',
       oculta: true,
       flags: {
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
@@ -138,7 +139,7 @@
       descricao: 'V2 com endereço tratado de uma vez: complemento no modal de cobertura e sem etapa de endereço no checkout.',
       oculta: true,
       flags: {
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
@@ -164,7 +165,7 @@
       descricao: 'V2 sem a volta à lista de endereços depois de adicionar um endereço novo.',
       oculta: true,
       flags: {
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
@@ -189,7 +190,7 @@
       descricao: 'V2 com a escolha de fidelidade na etapa de pagamento (e não na PDP), seguida do total e do Continuar.',
       oculta: true,
       flags: {
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
@@ -213,7 +214,7 @@
       descricao: 'V2 com o botão "Ver mais datas" no agendamento (mais 10 datas em uma tela própria).',
       oculta: true,
       flags: {
-        maisDetalhesNoCard: true,
+        maisDetalhesNoCard: false, // desligado por ora em todas as versões (voltar para true para reexibir o "Mais detalhes" nos cards)
         pdpV2: true,
         dadosPessoaisSemRgMae: true,
         dadosResumoComLabels: true,
