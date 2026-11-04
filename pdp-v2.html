@@ -329,7 +329,7 @@
       <button type="button" class="switch" id="fidSwitch" role="switch" aria-checked="true" aria-label="Fidelidade"></button>
     </div>
 
-    <div class="divider-section"><div class="piece piece--top"></div><div class="piece piece--bottom"></div></div>
+    <div class="divider"></div>
 
     <button type="button" class="acc-head" id="accBtn" aria-expanded="false">
       <span>Benefícios de internet para sua casa</span>
@@ -470,7 +470,11 @@
   $('contratoLink').addEventListener('click', () => showToast('Contrato de Prestação de Serviços ainda não implementado'));
   $('anatelLink').addEventListener('click', (e) => { e.preventDefault(); showToast('Documentação da Anatel ainda não implementada'); });
   // Continuar: o endereço já foi escolhido antes desta tela; segue para o checkout (a fidelidade fica guardada)
-  $('continuarBtn').addEventListener('click', () => { location.href = 'checkout.html?produto=' + encodeURIComponent(produto.id); });
+  // Teste 1 (flag pdpAntesDoEndereco): da PDP segue para a seleção de endereço; no fluxo normal, direto ao checkout
+  $('continuarBtn').addEventListener('click', () => {
+    const proxima = (window.APP_VERSION && window.APP_VERSION.flags.pdpAntesDoEndereco) ? 'selecao-endereco.html' : 'checkout.html';
+    location.href = proxima + '?produto=' + encodeURIComponent(produto.id);
+  });
 
   // A barra fixa fica por cima do fim da tela: reserva o espaço medindo a altura real
   function ajustar() { $('scrollArea').style.paddingBottom = ($('totalBar').offsetHeight + 16) + 'px'; }
