@@ -481,6 +481,7 @@
   }
   .btn-footer:not(:disabled):active{filter:brightness(0.95);}
 </style>
+<link rel="stylesheet" href="sheet-complemento.css">
 </head>
 <body>
 
@@ -538,6 +539,18 @@
   <div class="loading-overlay" id="loadingOverlay" hidden>
     <div class="mdn-Spinner mdn-Spinner--default">
       <span class="mdn-Icon-claro mdn-Icon--lg" aria-label="Carregando" tabindex="0"></span>
+    </div>
+  </div>
+
+  <!-- Teste 2: modal "Cobertura na região" com complemento e referência -->
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden>
+    <div class="bottom-sheet">
+      <div class="bar-wrapper"><div class="bar"></div></div>
+      <div class="header">
+        <span class="mdn-Icon-localizacao mdn-Icon--lg" aria-hidden="true"></span>
+        <h2>Cobertura na região</h2>
+      </div>
+      <div class="body" id="sheetBody"></div>
     </div>
   </div>
 
@@ -631,6 +644,7 @@
 
 <script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
 <script src="app-versions.js"></script>
+<script src="sheet-complemento.js"></script>
 <script src="app-catalog.js"></script>
 <script>
   const catalog = window.APP_CATALOG;
@@ -770,6 +784,8 @@
     // cadastro — não pedir de novo, segue direto pra página de produto.
     if (endereco.recemAdicionado || endereco.complemento) {
       irParaPaginaProduto(endereco);
+    } else if (enderecoUnicoNoModal) {
+      abrirSheetEndereco(endereco); // Teste 2: complemento no modal "Cobertura na região"
     } else {
       abrirComplementoModal(endereco);
     }
@@ -899,6 +915,66 @@
     aplicarEdicao(enderecoSelecionado, edicao);
     irParaPaginaProduto(enderecoSelecionado);
   });
+
+
+  // ===== Teste 2 (flag enderecoUnicoNoModal): o endereço da lista abre o modal "Cobertura na região",
+  // que já traz o complemento e a referência; depois dele segue para o produto =====
+  const enderecoUnicoNoModal = !!(window.APP_VERSION && window.APP_VERSION.flags.enderecoUnicoNoModal);
+  const sheetBackdropEl = document.getElementById('sheetBackdrop');
+  const bottomSheetEl = document.querySelector('.bottom-sheet');
+  function abrirSheetEndereco(endereco) {
+    enderecoSelecionado = endereco;
+    window.SheetComplemento.render(document.getElementById('sheetBody'), {
+      endereco: window.SheetComplemento.capitalizar(endereco.endereco),
+      obrigatorio: window.SheetComplemento.exigeComplemento(endereco),
+      referencia: endereco.referencia || '',
+      onEditar: fecharSheetEndereco,
+      onContinuar: (complemento, referencia) => {
+        endereco.complemento = complemento;
+        complementosSessao[endereco.id] = complemento;
+        sessionStorage.setItem('complementosSessao', JSON.stringify(complementosSessao));
+        const d = separarEndereco(endereco.endereco);
+        const edicao = { logradouro: d.logradouro, bairro: d.bairro, referencia };
+        enderecosEditados[endereco.id] = edicao;
+        sessionStorage.setItem('enderecosEditados', JSON.stringify(enderecosEditados));
+        aplicarEdicao(endereco, edicao);
+        irParaPaginaProduto(endereco);
+      },
+    });
+    sheetBackdropEl.hidden = false;
+    requestAnimationFrame(() => requestAnimationFrame(() => sheetBackdropEl.classList.add('is-open')));
+  }
+  function fecharSheetEndereco() {
+    sheetBackdropEl.classList.remove('is-open');
+    setTimeout(() => { sheetBackdropEl.hidden = true; }, 300);
+  }
+  sheetBackdropEl.addEventListener('click', (e) => { if (e.target === sheetBackdropEl) fecharSheetEndereco(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !sheetBackdropEl.hidden) fecharSheetEndereco(); });
+  // Arrastar o sheet para baixo fecha (ignora campos, botões e links para não atrapalhar o uso)
+  (function () {
+    let dragging = false, startY = 0, deltaY = 0;
+    bottomSheetEl.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button, a, input, select, textarea, label, .body')) return;
+      dragging = true; startY = e.clientY; deltaY = 0;
+      bottomSheetEl.style.transition = 'none';
+      bottomSheetEl.setPointerCapture(e.pointerId);
+    });
+    bottomSheetEl.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      deltaY = Math.max(0, e.clientY - startY);
+      bottomSheetEl.style.transform = `translateY(${deltaY}px)`;
+    });
+    const fim = () => {
+      if (!dragging) return;
+      dragging = false;
+      bottomSheetEl.style.transition = ''; bottomSheetEl.style.transform = '';
+      if (deltaY > Math.min(120, bottomSheetEl.getBoundingClientRect().height * 0.25)) fecharSheetEndereco();
+    };
+    bottomSheetEl.addEventListener('pointerup', fim);
+    bottomSheetEl.addEventListener('pointercancel', fim);
+  })();
+  // Endereço recém-adicionado já passou pelo modal (CEP + número + complemento): segue direto ao produto
+  if (novoRaw && enderecoUnicoNoModal) irParaPaginaProduto(novoRaw);
 
   // O Button Wrapper é fixo (position:absolute) por cima do fim da lista de
   // endereços — sem esse ajuste, o último item fica parcialmente escondido

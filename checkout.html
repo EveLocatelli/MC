@@ -941,11 +941,14 @@
   // número ("R Roneto Macedo, 19, Apto 12, Campo Grande - ..."), como no app no ar.
   // Endereço adicionado já traz o complemento no texto (exceto "Sem complemento"); endereço
   // da lista recebe o complemento escolhido na tela de seleção.
+  // Teste 2 (flag enderecoUnicoNoModal): o endereço já foi confirmado no modal de cobertura —
+  // no checkout ele aparece direto como resumo, antes dos dados pessoais, e não existe etapa de endereço.
+  const enderecoUnico = !!(window.APP_VERSION && window.APP_VERSION.flags.enderecoUnicoNoModal);
   function enderecoParaModal() {
     const comp = (enderecoEscolhido.complemento || '').trim();
     const txt = enderecoEscolhido.endereco || '';
     const jaTemComplemento = enderecoEscolhido.recemAdicionado && !/^sem complemento$/i.test(comp);
-    if (!comp || jaTemComplemento) return txt.toUpperCase();
+    if (!comp || jaTemComplemento || (enderecoUnico && /^sem complemento$/i.test(comp))) return txt.toUpperCase();
     const partes = txt.split(', ');          // [logradouro, número, ...resto]
     partes.splice(Math.min(2, partes.length), 0, comp);
     return partes.join(', ').toUpperCase();
@@ -975,13 +978,14 @@
   $('sheetLinha').textContent = capitalizarEndereco(enderecoParaModal());
   preencher('sheetRef', refEndereco);
 
-  let enderecoConfirmadoNoCheckout = sessionStorage.getItem('checkoutEnderecoOk') === '1';
+  let enderecoConfirmadoNoCheckout = enderecoUnico || sessionStorage.getItem('checkoutEnderecoOk') === '1';
   // Card resumo (endereço já confirmado): endereço em maiúsculas + referência/complemento
   $('endResLinha').textContent = linhaEndereco;
   preencher('endResRef', refEndereco);
   preencher('endResComp', compEndereco);
 
   function travarEndereco() {
+    if (enderecoUnico) { travarInstalacao(); return; } // o endereço nunca "apaga": só as etapas seguintes
     $('stepEndereco').classList.add('is-locked');
     $('stepEndereco').classList.remove('is-active', 'is-done');
     $('endBody').hidden = true;
@@ -989,6 +993,7 @@
     travarInstalacao();
   }
   function ativarEndereco() {
+    if (enderecoUnico) { ativarInstalacao(); return; } // sem etapa de endereço: segue direto para o agendamento
     $('stepEndereco').classList.remove('is-locked');
     $('stepEndereco').classList.add('is-active');
     $('endBody').hidden = false;
@@ -1340,7 +1345,8 @@
     travarPagamento();
   });
   // Editar o endereço (lápis): reabre a confirmação (Sim mantém, Alterar volta à seleção)
-  $('endEditar').addEventListener('click', () => abrirSheet());
+  // Teste 2: o lápis leva direto à seleção de endereço (não há mais a pergunta "Sim / Alterar endereço")
+  $('endEditar').addEventListener('click', () => { if (enderecoUnico) $('sheetAlterar').click(); else abrirSheet(); });
 
   // Bottom sheet "Confirmar endereço"
   function abrirSheet() {
@@ -1397,6 +1403,28 @@
   };
   $('backBtn').addEventListener('click', () => { if (history.length > 1) history.back(); else voltarProduto(); });
   $('closeBtn').addEventListener('click', voltarProduto);
+
+  // ===== Teste 2: "Endereço da instalação" no topo, já confirmado, antes dos dados pessoais =====
+  if (enderecoUnico) {
+    const stEnd = $('stepEndereco'), stDados = $('stepDados');
+    const sepEntre = stEnd.previousElementSibling;           // faixa entre dados pessoais e endereço
+    stDados.previousElementSibling.after(stEnd);              // endereço logo após o cabeçalho "Falta pouco..."
+    stEnd.after(sepEntre);                                    // e a faixa passa a separar endereço de dados pessoais
+    stEnd.classList.remove('is-locked', 'is-active');
+    stEnd.classList.add('is-done');
+    stEnd.classList.remove('com-labels');
+    stEnd.querySelector('.name').textContent = 'Endereço da instalação';
+    $('endBody').hidden = false;
+    document.querySelector('#endBody .end-row').hidden = true;
+    $('endAcao').hidden = true;
+    $('endResumo').hidden = false;
+    $('endBadge').hidden = false;
+    $('endResItens').hidden = true;
+    $('endResLinha').textContent = enderecoParaModal().toUpperCase();
+    $('endResLinha').hidden = false;
+    preencher('endResRef', refEndereco);
+    $('endResComp').hidden = true;
+  }
 
   validarForm();
 </script>

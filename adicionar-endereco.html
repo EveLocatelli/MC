@@ -398,6 +398,7 @@
   }
   .toast.is-visible{opacity:1;transform:translateY(0);}
 </style>
+<link rel="stylesheet" href="sheet-complemento.css">
 </head>
 <body>
 
@@ -559,6 +560,7 @@
 
 <script src="https://mondrian.claro.com.br/vanilla/mondrian-vanilla-6.0.7.js"></script>
 <script src="app-versions.js"></script>
+<script src="sheet-complemento.js"></script>
 <script>
   const params = new URLSearchParams(window.location.search);
   const produtoId = params.get('produto');
@@ -652,7 +654,7 @@
     let deltaY = 0;
 
     function onPointerDown(e) {
-      if (e.target.closest('button, a')) return;
+      if (e.target.closest('button, a, input, select, textarea, label, .body')) return;
       dragging = true;
       startY = e.clientY;
       deltaY = 0;
@@ -688,7 +690,31 @@
     return completo ? resultado.endereco : `Número: ${resultado.numero}, CEP: ${resultado.cep}`;
   }
 
+  // Teste 2 (flag enderecoUnicoNoModal): o próprio modal de cobertura pede complemento e referência;
+  // ao continuar, o endereço é salvo e a jornada segue direto (sem tela de complemento e sem voltar à lista).
+  const enderecoUnicoNoModal = !!(window.APP_VERSION && window.APP_VERSION.flags.enderecoUnicoNoModal);
+  function renderSheetDisponivelComComplemento(resultado) {
+    window.SheetComplemento.render(document.getElementById('sheetBody'), {
+      endereco: window.SheetComplemento.capitalizar(textoEnderecoSheet(resultado)),
+      obrigatorio: window.SheetComplemento.exigeComplemento(resultado),
+      referencia: '',
+      onEditar: editarEndereco,
+      onContinuar: (complemento, referencia) => {
+        const enderecoFinal = montarEndereco({ ...resultado, complemento });
+        sessionStorage.setItem('enderecoRecemAdicionado', JSON.stringify({
+          id: 'novo-' + Date.now(),
+          endereco: enderecoFinal,
+          complemento: complemento,
+          referencia: referencia,
+          disponivel: true,
+        }));
+        window.location.href = 'selecao-endereco.html' + (produtoId ? ('?produto=' + encodeURIComponent(produtoId)) : '');
+      },
+    });
+  }
+
   function renderSheetDisponivel(resultado) {
+    if (enderecoUnicoNoModal) { renderSheetDisponivelComComplemento(resultado); return; }
     document.getElementById('sheetBody').innerHTML = `
       <p class="message is-success">Este plano tem cobertura no novo endereço adicionado.</p>
       <div class="tag is-success">

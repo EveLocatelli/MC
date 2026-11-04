@@ -24,5 +24,11 @@
   t1.hipotese = 'Antecipar a PDP reduz o abandono na etapa de endereço: o cliente sente falta de ver os detalhes do produto logo após escolher a oferta.';
   t1.a = { rotulo: 'Endereço antes da PDP', versao: 'v2', inicio: 'ofertas-fibra.html' };
   t1.b = { rotulo: 'PDP antes do endereço', versao: 't1', inicio: 'ofertas-fibra.html' };
-  window.AB_TESTES = [t1, teste(2), teste(3), teste(4), teste(5)];
+  var t2 = teste(2);
+  t2.nome = 'Teste 2 - Endereço em um único modal';
+  t2.descricao = 'Endereço tratado de uma vez só, no início da jornada';
+  t2.hipotese = 'Tratar o endereço em um único modal, no início da jornada, reduz o abandono sem impactar a instalação.';
+  t2.a = { rotulo: 'Endereço em várias etapas', versao: 'v2', inicio: 'ofertas-fibra.html' };
+  t2.b = { rotulo: 'Endereço em um único modal', versao: 't2', inicio: 'ofertas-fibra.html' };
+  window.AB_TESTES = [t1, t2, teste(3), teste(4), teste(5)];
 })();

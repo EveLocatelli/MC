@@ -1,0 +1,131 @@
+/* Bottom sheet de cobertura (usado em selecao-endereco.html e adicionar-endereco.html no Teste 2).
+   Variáveis (--ink, --white, --red, --green-*, --warn-*, --gray-*, --radius-*) vêm de cada página. */
+:root{--gray-light:#f8f8f8;}
+  /* ===== Bottom sheet (resultado da consulta de CEP) ===== */
+  .sheet-backdrop{
+    position:absolute;
+    inset:0;
+    background:rgba(31,29,29,0.5);
+    z-index:40;
+    display:flex;
+    align-items:flex-end;
+  }
+  .bottom-sheet{
+    width:100%;
+    background:var(--white);
+    border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow:hidden;
+    transform:translateY(100%);
+    transition:transform 0.3s cubic-bezier(0.05,0.7,0.1,1);
+    touch-action:none; /* deixa o gesto de arrastar pra fechar livre do scroll nativo */
+  }
+  .sheet-backdrop.is-open .bottom-sheet{transform:translateY(0);}
+  .bottom-sheet .bar-wrapper{
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    width:100%;
+    cursor:grab;
+  }
+  .bottom-sheet .bar{width:32px;height:2px;background:var(--gray-line);}
+  .bottom-sheet .header{
+    width:100%;
+    padding:0 16px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .bottom-sheet .header .mdn-Icon--lg{color:var(--red);}
+  .bottom-sheet .header h2{
+    margin:0;
+    font-family:'AMX',sans-serif;
+    font-weight:500;
+    font-size:24px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .bottom-sheet .body{
+    width:100%;
+    padding:24px 16px 32px;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  }
+  .bottom-sheet .message{
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:400;
+    font-size:16px;
+    line-height:1.3;
+  }
+  .bottom-sheet .message.is-success{color:var(--green-text);}
+  .bottom-sheet .message.is-warning{color:var(--warn-text);}
+  .bottom-sheet .tag{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    padding:4px 8px;
+    border-radius:var(--radius-xs);
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:12px;
+    line-height:1.3;
+    width:fit-content;
+  }
+  .bottom-sheet .tag i{font-size:16px;}
+  .bottom-sheet .tag.is-success{background:var(--green-bg);color:var(--green-text);}
+  .bottom-sheet .tag.is-warning{background:var(--warn-bg);color:var(--warn-text);}
+  .bottom-sheet .address-box{
+    width:100%;
+    background:var(--gray-light);
+    border-radius:var(--radius-sm);
+    padding:24px;
+    display:flex;
+    align-items:flex-start;
+    gap:24px;
+  }
+  .bottom-sheet .address-box p{
+    flex:1;
+    min-width:0;
+    margin:0;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    line-height:1.3;
+    color:var(--ink);
+  }
+  .bottom-sheet .address-box .edit-btn{
+    flex-shrink:0;
+    color:var(--ink);
+    display:flex;
+  }
+  .bottom-sheet .sheet-cta{
+    width:100%;
+    height:48px;
+    border-radius:var(--radius-pill);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Roboto',sans-serif;
+    font-weight:500;
+    font-size:16px;
+    color:var(--white);
+    background:var(--red);
+    transition:filter 0.2s;
+  }
+  @media (hover:hover){
+    .bottom-sheet .sheet-cta:hover{filter:brightness(0.9);}
+  }
+  .bottom-sheet .sheet-cta:active{transform:scale(0.99);}
+
+  /* ===== Teste 2: modal de cobertura com complemento e referência no próprio sheet ===== */
+  .bottom-sheet{max-height:92%;}
+  .bottom-sheet .body{min-height:0;overflow-y:auto;touch-action:pan-y;}
+  .bottom-sheet .campos{display:flex;flex-direction:column;gap:24px;width:100%;}
+  .bottom-sheet .mdn-Input{width:100%;}
+  .bottom-sheet .sheet-cta:disabled{opacity:.32;cursor:not-allowed;}

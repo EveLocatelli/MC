@@ -64,6 +64,10 @@
         coberturaComEnderecoCompleto: false,
         // Teste 1: a PDP vem logo depois de escolher a oferta, antes de selecionar o endereço (depois do endereço vai direto aos dados pessoais)
         pdpAntesDoEndereco: false,
+        // Teste 2: endereço tratado de uma vez no início — modal "Cobertura na região" já pede complemento/referência; sem etapa de endereço no checkout
+        enderecoUnicoNoModal: false,
+        // Teste 2: complemento obrigatório para todos (a API ainda não diz quais endereços precisam). false = opcional
+        complementoObrigatorioParaTodos: true,
       },
     },
     v2: {
@@ -83,6 +87,8 @@
         coberturaComEnderecoCompleto: true,
         // Teste 1: a PDP vem logo depois de escolher a oferta, antes de selecionar o endereço (depois do endereço vai direto aos dados pessoais)
         pdpAntesDoEndereco: false,
+        enderecoUnicoNoModal: false,
+        complementoObrigatorioParaTodos: true,
       },
     },
     // ---- Versões B dos testes A/B (ficam fora da lista de versões do index; aparecem só em comparar.html) ----
@@ -102,6 +108,30 @@
         coberturaComEnderecoCompleto: true,
         manterDadosAoAlterarEndereco: false,
         pdpAntesDoEndereco: true,
+        // Teste 2: endereço tratado de uma vez no início — modal "Cobertura na região" já pede complemento/referência; sem etapa de endereço no checkout
+        enderecoUnicoNoModal: false,
+        // Teste 2: complemento obrigatório para todos (a API ainda não diz quais endereços precisam). false = opcional
+        complementoObrigatorioParaTodos: true,
+      },
+    },
+    t2: {
+      id: 't2',
+      nome: 'Teste 2 - Endereço em um único modal',
+      descricao: 'V2 com endereço tratado de uma vez: complemento no modal de cobertura e sem etapa de endereço no checkout.',
+      oculta: true,
+      flags: {
+        maisDetalhesNoCard: true,
+        pdpV2: true,
+        dadosPessoaisSemRgMae: true,
+        dadosResumoComLabels: true,
+        agendamentoDataPrimeiro: true,
+        pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
+        manterDadosAoAlterarEndereco: false,
+        pdpAntesDoEndereco: false,
+        enderecoUnicoNoModal: true,
+        complementoObrigatorioParaTodos: true,
       },
     },
   };
