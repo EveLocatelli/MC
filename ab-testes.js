@@ -2,8 +2,9 @@
 // Cada teste tem dois lados:
 //   versao: id de uma versão de app-versions.js (v1, v2...). Para testar uma variável nova,
 //           crie uma versão nova lá (com a flag ligada) e aponte o lado B para ela.
-//   inicio: página em que o frame começa (padrão: ofertas-fibra.html). Dá para começar direto
-//           numa etapa, ex.: 'selecao-endereco.html?produto=fibra-1gb'.
+//   inicio: página em que o frame começa (padrão: ofertas-fibra.html). Dá para começar direto numa etapa,
+//           ex.: 'selecao-endereco.html?produto=fibra-1gb' ou, para o checkout já na etapa de pagamento,
+//           'checkout.html?produto=fibra-1gb&etapa=pagamento'.
 // Lado A de todos os testes = V2 (melhorias mapeadas pela Ing). Lado B = versão com a melhoria
 // em teste (por enquanto aponta para a V2 até cada variante ser criada).
 // Preencha nome, descrição e hipótese de cada teste conforme forem sendo definidos.
@@ -40,7 +41,9 @@
   t4.nome = 'Teste 4 - Fidelidade no pagamento';
   t4.descricao = 'Mover o bloco de fidelidade da PDP para a etapa de pagamento';
   t4.hipotese = 'Mover a escolha com/sem fidelidade para o pagamento (última etapa antes da conclusão), com o total fixo no rodapé, simplifica a PDP.';
-  t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: 'ofertas-fibra.html' };
-  t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: 'ofertas-fibra.html' };
+  // Este teste começa direto na etapa de pagamento do checkout (para apresentar sem refazer a jornada)
+  var pagamento = 'checkout.html?produto=fibra-1gb&etapa=pagamento';
+  t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: pagamento };
+  t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: pagamento };
   window.AB_TESTES = [t1, t2, t3, t4, teste(5)];
 })();

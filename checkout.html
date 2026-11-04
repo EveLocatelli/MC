@@ -1517,6 +1517,22 @@
     renderFidelidade();
   }
 
+  // ===== Atalho de demonstração: ?etapa=pagamento abre o checkout já na etapa de pagamento =====
+  // (preenche os dados pessoais e escolhe a primeira data/período de instalação, como se o usuário já tivesse passado por eles)
+  // Usado pelos testes A/B (ab-testes.js, campo "inicio") para apresentar sem refazer a jornada desde o começo.
+  if (new URLSearchParams(location.search).get('etapa') === 'pagamento') {
+    const set = (id, v) => { const el = $(id); if (el && !el.disabled && !el.value) { el.value = v; ['input', 'keyup', 'blur'].forEach((t) => el.dispatchEvent(new Event(t, { bubbles: true }))); } };
+    set('email', 'nome@email.com'); set('rg', '12.345.678-9'); set('mae', 'Maria Locatelli');
+    setTimeout(() => {
+      if (!$('dadosContinuar').disabled) $('dadosContinuar').click();
+      setTimeout(() => {
+        const data = document.querySelector('#datas > *'); if (data) data.click();
+        const per = document.querySelector('#periodos .mdn-Radio'); if (per) per.click();
+        setTimeout(() => { if (!$('instContinuar').disabled) $('instContinuar').click(); window.scrollTo(0, 0); }, 150);
+      }, 150);
+    }, 100);
+  }
+
   validarForm();
 </script>
 </body>
