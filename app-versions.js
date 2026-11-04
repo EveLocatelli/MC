@@ -70,8 +70,10 @@
         complementoObrigatorioParaTodos: true,
         // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
         pularListaAposNovoEndereco: false,
-        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, seguido do total e do Continuar
         fidelidadeNoPagamento: false,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
       },
     },
     v2: {
@@ -97,6 +99,8 @@
         pularListaAposNovoEndereco: false,
         // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
         fidelidadeNoPagamento: false,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
       },
     },
     // ---- Versões B dos testes A/B (ficam fora da lista de versões do index; aparecem só em comparar.html) ----
@@ -124,6 +128,8 @@
         pularListaAposNovoEndereco: false,
         // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
         fidelidadeNoPagamento: false,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
       },
     },
     t2: {
@@ -148,6 +154,8 @@
         pularListaAposNovoEndereco: false,
         // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
         fidelidadeNoPagamento: false,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
       },
     },
     t3: {
@@ -171,12 +179,14 @@
         pularListaAposNovoEndereco: true,
         // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
         fidelidadeNoPagamento: false,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
       },
     },
     t4: {
       id: 't4',
       nome: 'Teste 4 - Fidelidade no pagamento',
-      descricao: 'V2 com a escolha de fidelidade na etapa de pagamento (e não na PDP), com o total fixo no rodapé.',
+      descricao: 'V2 com a escolha de fidelidade na etapa de pagamento (e não na PDP), seguida do total e do Continuar.',
       oculta: true,
       flags: {
         maisDetalhesNoCard: true,
@@ -193,6 +203,31 @@
         complementoObrigatorioParaTodos: true,
         pularListaAposNovoEndereco: false,
         fidelidadeNoPagamento: true,
+        // Teste 5: agendamento com botão "Ver mais datas" (mais 10 datas numa tela própria)
+        maisDatas: false,
+      },
+    },
+    t5: {
+      id: 't5',
+      nome: 'Teste 5 - Mais datas no agendamento',
+      descricao: 'V2 com o botão "Ver mais datas" no agendamento (mais 10 datas em uma tela própria).',
+      oculta: true,
+      flags: {
+        maisDetalhesNoCard: true,
+        pdpV2: true,
+        dadosPessoaisSemRgMae: true,
+        dadosResumoComLabels: true,
+        agendamentoDataPrimeiro: true,
+        pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
+        manterDadosAoAlterarEndereco: false,
+        pdpAntesDoEndereco: false,
+        enderecoUnicoNoModal: false,
+        complementoObrigatorioParaTodos: true,
+        pularListaAposNovoEndereco: false,
+        fidelidadeNoPagamento: false,
+        maisDatas: true,
       },
     },
   };

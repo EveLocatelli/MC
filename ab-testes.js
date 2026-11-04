@@ -4,7 +4,7 @@
 //           crie uma versão nova lá (com a flag ligada) e aponte o lado B para ela.
 //   inicio: página em que o frame começa (padrão: ofertas-fibra.html). Dá para começar direto numa etapa,
 //           ex.: 'selecao-endereco.html?produto=fibra-1gb' ou, para o checkout já na etapa de pagamento,
-//           'checkout.html?produto=fibra-1gb&etapa=pagamento'.
+//           'checkout.html?produto=fibra-1gb&etapa=pagamento' (ou '&etapa=agenda' para parar no agendamento).
 // Lado A de todos os testes = V2 (melhorias mapeadas pela Ing). Lado B = versão com a melhoria
 // em teste (por enquanto aponta para a V2 até cada variante ser criada).
 // Preencha nome, descrição e hipótese de cada teste conforme forem sendo definidos.
@@ -40,10 +40,18 @@
   var t4 = teste(4);
   t4.nome = 'Teste 4 - Fidelidade no pagamento';
   t4.descricao = 'Mover o bloco de fidelidade da PDP para a etapa de pagamento';
-  t4.hipotese = 'Mover a escolha com/sem fidelidade para o pagamento (última etapa antes da conclusão), com o total fixo no rodapé, simplifica a PDP.';
+  t4.hipotese = 'Mover a escolha com/sem fidelidade para o pagamento (última etapa antes da conclusão), com o total e o Continuar logo depois do bloco de fidelidade, simplifica a PDP.';
   // Este teste começa direto na etapa de pagamento do checkout (para apresentar sem refazer a jornada)
   var pagamento = 'checkout.html?produto=fibra-1gb&etapa=pagamento';
   t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: pagamento };
   t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: pagamento };
-  window.AB_TESTES = [t1, t2, t3, t4, teste(5)];
+  var t5 = teste(5);
+  t5.nome = 'Teste 5 - Mais datas no agendamento';
+  t5.descricao = 'Botão "Ver mais datas" na etapa de agendamento (mais 10 datas)';
+  t5.hipotese = 'Oferecer mais datas de agendamento, além das 10 exibidas, ajuda o cliente a encontrar um dia que sirva e a concluir o pedido.';
+  // Começa direto na etapa de agendamento do checkout
+  var agendamento = 'checkout.html?produto=fibra-1gb&etapa=agenda';
+  t5.a = { rotulo: '10 datas', versao: 'v2', inicio: agendamento };
+  t5.b = { rotulo: '10 datas + Ver mais datas', versao: 't5', inicio: agendamento };
+  window.AB_TESTES = [t1, t2, t3, t4, t5];
 })();

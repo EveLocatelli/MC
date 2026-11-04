@@ -349,6 +349,15 @@
   .venc-card.is-selected .d,.venc-card.is-selected .n{color:var(--white);}
   .pag-cta{padding:32px 16px;}
 
+
+  /* ===== Teste 5: "Ver mais datas" ===== */
+  .mais-datas .data-card{flex:0 0 76px;}
+  .ver-mais-datas{flex:0 0 auto;align-self:center;display:flex;align-items:center;gap:4px;padding:0 16px 0 8px;font-size:16px;line-height:1.3;color:var(--ink);white-space:nowrap;}
+  .ver-mais-datas i{font-size:16px;}
+  .datas-grid{display:flex;flex-wrap:wrap;gap:8px;padding:16px;}
+  .datas-grid .data-card{flex:0 0 76px;}
+  .datas-rodape{flex-shrink:0;padding:24px 16px 32px;background:var(--white);}
+
   /* ===== Teste 4: bloco de fidelidade no pagamento + rodapé fixo com o total ===== */
   .fid-bloco{padding:32px 0 0;display:flex;flex-direction:column;gap:24px;background:var(--white);}
   .fid-bloco .tit{margin:0;padding:0 16px;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
@@ -366,11 +375,8 @@
   .fid-itens li i.f-ok{color:var(--green-text);}
   .fid-itens li i.f-atencao{color:#b84d01;}
   .fid-itens li i.f-nao{color:var(--red);}
-  .total-fid{
-    position:absolute;left:0;right:0;bottom:0;z-index:20;background:var(--white);
-    border:1px solid var(--gray-line);border-bottom:none;border-radius:12px 12px 0 0;
-    box-shadow:0 -4px 8px 0 rgba(31,29,29,0.16);padding:24px 16px;display:flex;flex-direction:column;gap:25px;
-  }
+  /* Total + Continuar: fazem parte da etapa de pagamento (vêm logo depois da fidelidade), não ficam fixos na tela */
+  .total-fid{background:var(--white);padding:24px 16px 40px;display:flex;flex-direction:column;gap:25px;}
   .total-fid .linha{display:flex;align-items:flex-start;gap:4px;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
   .total-fid .k{flex:1;min-width:0;}
   .total-fid .pv{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:4px;}
@@ -769,6 +775,28 @@
     </div>
   </div>
 
+  <div class="full-modal" id="datasModal" aria-hidden="true">
+    <div class="status-bar">
+      <span class="time">5:13</span>
+      <div class="icons">
+        <img src="assets/statusbar/alarm.svg" alt="">
+        <img src="assets/statusbar/bluetooth.svg" alt="">
+        <img src="assets/statusbar/wifi.svg" alt="">
+        <img src="assets/statusbar/signal.svg" alt="">
+        <img class="battery" src="assets/statusbar/battery.svg" alt="">
+      </div>
+    </div>
+    <div class="app-bar">
+      <div class="title">
+        <button type="button" class="back-btn" id="datasVoltar" aria-label="Voltar">
+          <span class="mdn-Icon-seta-esquerda mdn-Icon--md" aria-hidden="true"></span>
+        </button>
+        <h1>Agende sua instalação</h1>
+      </div>
+    </div>
+    <div class="body"><div class="datas-grid" id="datasGrid" role="radiogroup" aria-label="Datas disponíveis"></div></div>
+    <div class="datas-rodape"><button type="button" class="btn-primary" id="datasContinuar" disabled>Continuar</button></div>
+  </div>
   <div class="total-fid" id="totalFid" hidden>
     <div class="linha"><span class="k">Total</span><div class="pv" id="totalFidPv"></div></div>
     <button type="button" class="btn-primary" id="fidContinuar">Continuar</button>
@@ -1057,12 +1085,34 @@
   const DIAS_COMPLETOS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const dois = (n) => String(n).padStart(2, '0');
   // Regra das datas: D+diaInicial até D+(diaInicial+quantidade-1), contadas a partir de hoje.
+  // Teste 5 (flag maisDatas): gera o dobro (10 no carrossel + 10 na tela "Ver mais datas")
+  const maisDatas = !!(window.APP_VERSION && window.APP_VERSION.flags.maisDatas);
   function gerarDatas() {
     const hoje = new Date();
-    return Array.from({ length: agenda.quantidade }, (_, i) => {
+    const total = agenda.quantidade * (maisDatas ? 2 : 1);
+    const lista = [];
+    // Domingos e feriados nacionais não têm visita técnica: são pulados (a contagem segue no próximo dia útil)
+    for (let i = 0; lista.length < total && i < 400; i++) {
       const d = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + agenda.diaInicial + i);
-      return { date: d, dia: DIAS_SEMANA[d.getDay()], diaCompleto: DIAS_COMPLETOS[d.getDay()], data: `${dois(d.getDate())}/${dois(d.getMonth() + 1)}` };
-    });
+      if (d.getDay() === 0 || ehFeriado(d)) continue;
+      lista.push({ date: d, dia: DIAS_SEMANA[d.getDay()], diaCompleto: DIAS_COMPLETOS[d.getDay()], data: `${dois(d.getDate())}/${dois(d.getMonth() + 1)}` });
+    }
+    return lista;
+  }
+  // Feriados nacionais: fixos + Sexta-feira Santa (2 dias antes da Páscoa). Feriados estaduais/municipais não entram.
+  function pascoa(ano) {
+    const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(ano, mes - 1, dia);
+  }
+  function ehFeriado(d) {
+    const fixos = ['01/01', '21/04', '01/05', '07/09', '12/10', '02/11', '15/11', '20/11', '25/12'];
+    if (fixos.includes(`${dois(d.getDate())}/${dois(d.getMonth() + 1)}`)) return true;
+    const p = pascoa(d.getFullYear());
+    const sextaSanta = new Date(p.getFullYear(), p.getMonth(), p.getDate() - 2);
+    return d.getTime() === sextaSanta.getTime();
   }
   const datas = gerarDatas();
   // V2 (flag agendamentoDataPrimeiro): data primeiro, período depois, na mesma etapa e sem nada pré-selecionado
@@ -1480,6 +1530,8 @@
       + '<div class="divider"></div><ul class="fid-itens" id="fidItens"></ul></div>';
     cta.before(bloco);
     cta.before(Object.assign(document.createElement('div'), { className: 'band', innerHTML: '<div class="piece piece--top"></div><div class="piece piece--bottom"></div>' }));
+    cta.before($('totalFid')); // o bloco de total e o Continuar entram na etapa de pagamento, depois da fidelidade
+    $('totalFid').hidden = false;
     cta.hidden = true;
     const li = (ic, cls, txt) => `<li><i class="${ic} ${cls}" aria-hidden="true"></i><span>${txt}</span></li>`;
     function renderFidelidade() {
@@ -1502,12 +1554,9 @@
       try { sessionStorage.setItem('fidelidade', fidAtiva() ? 'sem' : 'com'); } catch (e) {}
       renderFidelidade();
     });
-    // O rodapé só aparece enquanto a etapa de pagamento está aberta; o Continuar dele é o do pagamento
+    // O Continuar deste bloco é o do pagamento: acompanha o estado dele (desabilitado até os dados do débito estarem completos)
     function sincRodapeFid() {
-      const ver = !$('pagBody').hidden;
-      $('totalFid').hidden = !ver;
       $('fidContinuar').disabled = $('pagContinuar').disabled;
-      $('scrollArea').style.paddingBottom = ver ? ($('totalFid').offsetHeight + 16) + 'px' : '';
     }
     $('fidContinuar').addEventListener('click', () => $('pagContinuar').click());
     ['abrirPagamento', 'travarPagamento', 'mostrarResumoPagamento', 'editarPagamento', 'validarPagamento'].forEach((nome) => {
@@ -1517,18 +1566,85 @@
     renderFidelidade();
   }
 
-  // ===== Atalho de demonstração: ?etapa=pagamento abre o checkout já na etapa de pagamento =====
-  // (preenche os dados pessoais e escolhe a primeira data/período de instalação, como se o usuário já tivesse passado por eles)
+  // ===== Teste 5 (flag maisDatas): botão "Ver mais datas" no fim do carrossel abre uma tela com as 20 datas =====
+  if (maisDatas) {
+    document.body.classList.add('mais-datas');
+    const N = agenda.quantidade; // datas do carrossel (as demais ficam na tela "Ver mais datas")
+    const cartaoData = (d, i) => `<button type="button" class="data-card" role="radio" aria-checked="false" data-idx="${i}"><span>${d.dia}</span><span>${d.data}</span></button>`;
+    function marcarSelecionada(container, idx) {
+      container.querySelectorAll('.data-card').forEach((c) => {
+        const on = Number(c.dataset.idx) === idx;
+        c.classList.toggle('is-selected', on);
+        c.setAttribute('aria-checked', String(on));
+      });
+    }
+    function renderDatas() {
+      const cards = datas.slice(0, N).map(cartaoData);
+      if (dataIdx >= N) cards.push(cartaoData(datas[dataIdx], dataIdx)); // data escolhida na tela "Ver mais datas"
+      $('datas').innerHTML = cards.join('') + '<button type="button" class="ver-mais-datas" id="verMaisDatas">Ver mais datas<i class="mdn-Icon-direita" aria-hidden="true"></i></button>';
+      marcarSelecionada($('datas'), dataIdx);
+    }
+    renderDatas();
+    // O clique do carrossel (registrado antes) já atualiza dataIdx; aqui só reaplicamos o destaque pelo índice real
+    $('datas').addEventListener('click', (e) => {
+      if ($('datas').dataset.moved === '1') return;
+      if (e.target.closest('#verMaisDatas')) { abrirDatas(); return; }
+      if (e.target.closest('.data-card')) marcarSelecionada($('datas'), dataIdx);
+    });
+
+    let escolhida = -1;
+    function abrirDatas() {
+      escolhida = dataIdx;
+      $('datasGrid').innerHTML = datas.map(cartaoData).join('');
+      marcarSelecionada($('datasGrid'), escolhida);
+      $('datasContinuar').disabled = escolhida < 0;
+      $('datasModal').classList.add('is-open');
+      $('datasModal').setAttribute('aria-hidden', 'false');
+    }
+    function fecharDatas() { $('datasModal').classList.remove('is-open'); $('datasModal').setAttribute('aria-hidden', 'true'); }
+    $('datasGrid').addEventListener('click', (e) => {
+      const c = e.target.closest('.data-card'); if (!c) return;
+      escolhida = Number(c.dataset.idx);
+      marcarSelecionada($('datasGrid'), escolhida);
+      $('datasContinuar').disabled = false;
+    });
+    $('datasVoltar').addEventListener('click', fecharDatas);
+    $('datasContinuar').addEventListener('click', () => {
+      if (escolhida < 0) return;
+      dataIdx = escolhida;
+      renderDatas();
+      atualizarBotaoAgenda();
+      fecharDatas();
+    });
+  }
+
+  // ===== Atalho de demonstração: ?etapa=agenda | ?etapa=pagamento abre o checkout já nessa etapa =====
+  // (preenche os dados pessoais, confirma o endereço e, para o pagamento, escolhe a primeira data/período de instalação;
+  // a tela rola até a etapa pedida, como se o usuário já tivesse passado pelas anteriores)
   // Usado pelos testes A/B (ab-testes.js, campo "inicio") para apresentar sem refazer a jornada desde o começo.
-  if (new URLSearchParams(location.search).get('etapa') === 'pagamento') {
+  const etapaDemo = new URLSearchParams(location.search).get('etapa');
+  if (etapaDemo === 'pagamento' || etapaDemo === 'agenda') {
     const set = (id, v) => { const el = $(id); if (el && !el.disabled && !el.value) { el.value = v; ['input', 'keyup', 'blur'].forEach((t) => el.dispatchEvent(new Event(t, { bubbles: true }))); } };
     set('email', 'nome@email.com'); set('rg', '12.345.678-9'); set('mae', 'Maria Locatelli');
+    enderecoConfirmadoNoCheckout = true; // o endereço também já vem confirmado (senão o agendamento continuaria apagado)
+    try { sessionStorage.setItem('checkoutEnderecoOk', '1'); } catch (e) {}
+    // Rola a área de rolagem até o começo da etapa (logo abaixo da barra do topo)
+    const irParaEtapa = () => {
+      const alvo = $(etapaDemo === 'agenda' ? 'stepInstalacao' : 'stepPagamento');
+      const area = $('scrollArea');
+      const topo = alvo.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop;
+      area.scrollTop = Math.max(0, topo - document.querySelector('.app-bar').offsetHeight);
+    };
     setTimeout(() => {
       if (!$('dadosContinuar').disabled) $('dadosContinuar').click();
       setTimeout(() => {
-        const data = document.querySelector('#datas > *'); if (data) data.click();
-        const per = document.querySelector('#periodos .mdn-Radio'); if (per) per.click();
-        setTimeout(() => { if (!$('instContinuar').disabled) $('instContinuar').click(); window.scrollTo(0, 0); }, 150);
+        if (etapaDemo === 'pagamento') {
+          const data = document.querySelector('#datas > *'); if (data) data.click();
+          const per = document.querySelector('#periodos .mdn-Radio'); if (per) per.click();
+          if (!$('instContinuar').disabled) $('instContinuar').click();
+        }
+        // as etapas abrem com pequenas animações/ajustes de altura: rola de novo logo depois
+        setTimeout(irParaEtapa, 100); setTimeout(irParaEtapa, 500);
       }, 150);
     }, 100);
   }
