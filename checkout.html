@@ -349,6 +349,35 @@
   .venc-card.is-selected .d,.venc-card.is-selected .n{color:var(--white);}
   .pag-cta{padding:32px 16px;}
 
+  /* ===== Teste 4: bloco de fidelidade no pagamento + rodapé fixo com o total ===== */
+  .fid-bloco{padding:32px 0 0;display:flex;flex-direction:column;gap:24px;background:var(--white);}
+  .fid-bloco .tit{margin:0;padding:0 16px;font-weight:500;font-size:12px;line-height:1.3;color:var(--gray-dark);text-transform:uppercase;}
+  .fid-linha{display:flex;align-items:center;gap:16px;padding:32px 16px;}
+  .fid-linha .ic{font-size:24px;flex-shrink:0;color:var(--green-text);}
+  .fid-linha .nome{flex:1;min-width:0;margin:0;font-weight:500;font-size:16px;line-height:1.3;color:var(--green-text);}
+  .fid-bloco.is-off .fid-linha .ic,.fid-bloco.is-off .fid-linha .nome{color:#b84d01;}
+  .fid-switch{position:relative;width:44px;height:24px;flex-shrink:0;border-radius:var(--radius-pill);background:#005c66;transition:background .2s;}
+  .fid-switch::after{content:"";position:absolute;top:4px;left:24px;width:16px;height:16px;border-radius:8px;background:var(--white);transition:left .2s cubic-bezier(0.2,0,0,1);}
+  .fid-switch[aria-checked="false"]{background:var(--gray-line);}
+  .fid-switch[aria-checked="false"]::after{left:4px;}
+  .fid-itens{list-style:none;margin:0;padding:32px 16px;display:flex;flex-direction:column;gap:16px;}
+  .fid-itens li{display:flex;align-items:center;gap:12px;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .fid-itens li i{font-size:24px;flex-shrink:0;}
+  .fid-itens li i.f-ok{color:var(--green-text);}
+  .fid-itens li i.f-atencao{color:#b84d01;}
+  .fid-itens li i.f-nao{color:var(--red);}
+  .total-fid{
+    position:absolute;left:0;right:0;bottom:0;z-index:20;background:var(--white);
+    border:1px solid var(--gray-line);border-bottom:none;border-radius:12px 12px 0 0;
+    box-shadow:0 -4px 8px 0 rgba(31,29,29,0.16);padding:24px 16px;display:flex;flex-direction:column;gap:25px;
+  }
+  .total-fid .linha{display:flex;align-items:flex-start;gap:4px;font-family:'AMX',sans-serif;font-weight:500;font-size:16px;line-height:1.3;color:var(--ink);}
+  .total-fid .k{flex:1;min-width:0;}
+  .total-fid .pv{display:flex;flex-direction:column;align-items:flex-end;text-align:right;gap:4px;}
+  .total-fid .sub{display:block;font-family:'Roboto',sans-serif;font-weight:400;font-size:12px;line-height:1.3;color:var(--gray-dark);}
+  .total-fid .sub b{font-weight:500;color:var(--ink);}
+  .total-fid .btn-primary{width:100%;}
+
   /* ===== Modal "Não encontrou seu banco?" (tela cheia, sobe de baixo) ===== */
   .full-modal{
     position:absolute;inset:0;z-index:45;background:var(--white);display:flex;flex-direction:column;
@@ -740,6 +769,10 @@
     </div>
   </div>
 
+  <div class="total-fid" id="totalFid" hidden>
+    <div class="linha"><span class="k">Total</span><div class="pv" id="totalFidPv"></div></div>
+    <button type="button" class="btn-primary" id="fidContinuar">Continuar</button>
+  </div>
   <div class="toast" id="toast"></div>
 </div>
 
@@ -1226,6 +1259,7 @@
       const itens = [['Pagamento via', debito ? 'Débito em conta' : 'Boleto']];
       if (debito) itens.push(['Banco', bancoNome], ['Agência', pagCampos.agencia.value], ['Conta', `${pagCampos.conta.value}-${pagCampos.digito.value}`]);
       itens.push(['Vencimento', `Dia ${vencPag}`], ['Envio por', faturaPag === 'email' ? 'E-mail' : 'Correios']);
+      if (fidNoPag) itens.push(['Fidelidade', fidAtiva() ? `Com fidelidade (${fidMeses} meses)` : 'Sem fidelidade']); // Teste 4
       preencherItens($('pagResItens'), itens);
     }
     $('pagBody').hidden = true;
@@ -1424,6 +1458,63 @@
     $('endResLinha').hidden = false;
     preencher('endResRef', refEndereco);
     $('endResComp').hidden = true;
+  }
+
+  // ===== Teste 4 (flag fidelidadeNoPagamento): escolha com/sem fidelidade no pagamento + total fixo no rodapé =====
+  const fidNoPag = !!(window.APP_VERSION && window.APP_VERSION.flags.fidelidadeNoPagamento);
+  const fidProduto = (catalog.produtos && catalog.produtos[produtoId]) || catalog.produtos[catalog.paginas['ofertas-fibra'].produtos[0]];
+  const fidResumo = fidProduto.resumo || { fidelidadeMeses: 12, taxaAdesao: 540 };
+  const fidMeses = fidResumo.fidelidadeMeses || 12;
+  const fidTaxa = fidResumo.taxaAdesao || 0;
+  const fidTemGlobo = !!(fidProduto.conclusao && fidProduto.conclusao.globoplay && fidProduto.conclusao.globoplay.length);
+  function fidAtiva() { return (sessionStorage.getItem('fidelidade') || 'com') !== 'sem'; }
+  if (fidNoPag) {
+    // Bloco "Fidelidade" depois da data de vencimento, dentro da etapa de pagamento (o botão Continuar vira o do rodapé)
+    const cta = $('pagContinuar').closest('.pag-cta');
+    const bloco = document.createElement('div');
+    bloco.id = 'fidBloco';
+    bloco.className = 'fid-bloco';
+    bloco.innerHTML = '<p class="tit">Fidelidade</p>'
+      + '<div><div class="fid-linha"><i class="ic" id="fidIc" aria-hidden="true"></i><p class="nome" id="fidNome"></p>'
+      + '<button type="button" class="fid-switch" id="fidSwitchPag" role="switch" aria-label="Fidelidade"></button></div>'
+      + '<div class="divider"></div><ul class="fid-itens" id="fidItens"></ul></div>';
+    cta.before(bloco);
+    cta.before(Object.assign(document.createElement('div'), { className: 'band', innerHTML: '<div class="piece piece--top"></div><div class="piece piece--bottom"></div>' }));
+    cta.hidden = true;
+    const li = (ic, cls, txt) => `<li><i class="${ic} ${cls}" aria-hidden="true"></i><span>${txt}</span></li>`;
+    function renderFidelidade() {
+      const com = fidAtiva();
+      $('fidBloco').classList.toggle('is-off', !com);
+      $('fidSwitchPag').setAttribute('aria-checked', String(com));
+      $('fidIc').className = 'ic ' + (com ? 'mdn-Icon-estrela-preenchida' : 'mdn-Icon-circulo-fechar');
+      $('fidNome').textContent = com ? 'Com fidelidade' : 'Sem fidelidade';
+      $('fidItens').innerHTML = com
+        ? li('mdn-Icon-calendario', '', `Contrato de ${meses12()} meses`) + li('mdn-Icon-check', 'f-ok', 'Adesão grátis') + (fidTemGlobo ? li('mdn-Icon-check', 'f-ok', 'Assinatura Globoplay inclusa') : '')
+        : li('mdn-Icon-check', 'f-ok', 'Cancele quando quiser') + li('mdn-Icon-triangulo-exclamacao', 'f-atencao', `Adesão ${moedaBR(fidTaxa)} cobrada na 1ª fatura`) + (fidTemGlobo ? li('mdn-Icon-fechar', 'f-nao', 'Sem assinatura Globoplay') : '');
+      const mensal = fidProduto.preco;
+      $('totalFidPv').innerHTML = com
+        ? `<span>${moedaBR(mensal)}/mês</span>`
+        : `<div><span class="sub">Valor do 1º mês: <b>${moedaBR(mensal + fidTaxa)}.</b></span><span class="sub">Valor do 2º ao ${fidMeses}º mês:</span></div><span>${moedaBR(mensal)}/mês</span>`;
+      sincRodapeFid();
+    }
+    function meses12() { return fidMeses; }
+    $('fidSwitchPag').addEventListener('click', () => {
+      try { sessionStorage.setItem('fidelidade', fidAtiva() ? 'sem' : 'com'); } catch (e) {}
+      renderFidelidade();
+    });
+    // O rodapé só aparece enquanto a etapa de pagamento está aberta; o Continuar dele é o do pagamento
+    function sincRodapeFid() {
+      const ver = !$('pagBody').hidden;
+      $('totalFid').hidden = !ver;
+      $('fidContinuar').disabled = $('pagContinuar').disabled;
+      $('scrollArea').style.paddingBottom = ver ? ($('totalFid').offsetHeight + 16) + 'px' : '';
+    }
+    $('fidContinuar').addEventListener('click', () => $('pagContinuar').click());
+    ['abrirPagamento', 'travarPagamento', 'mostrarResumoPagamento', 'editarPagamento', 'validarPagamento'].forEach((nome) => {
+      const original = window[nome];
+      window[nome] = function () { const r = original.apply(this, arguments); sincRodapeFid(); return r; };
+    });
+    renderFidelidade();
   }
 
   validarForm();

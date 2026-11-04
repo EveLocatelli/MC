@@ -70,6 +70,8 @@
         complementoObrigatorioParaTodos: true,
         // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
         pularListaAposNovoEndereco: false,
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        fidelidadeNoPagamento: false,
       },
     },
     v2: {
@@ -93,6 +95,8 @@
         complementoObrigatorioParaTodos: true,
         // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
         pularListaAposNovoEndereco: false,
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        fidelidadeNoPagamento: false,
       },
     },
     // ---- Versões B dos testes A/B (ficam fora da lista de versões do index; aparecem só em comparar.html) ----
@@ -118,6 +122,8 @@
         complementoObrigatorioParaTodos: true,
         // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
         pularListaAposNovoEndereco: false,
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        fidelidadeNoPagamento: false,
       },
     },
     t2: {
@@ -140,6 +146,8 @@
         complementoObrigatorioParaTodos: true,
         // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
         pularListaAposNovoEndereco: false,
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        fidelidadeNoPagamento: false,
       },
     },
     t3: {
@@ -161,6 +169,30 @@
         enderecoUnicoNoModal: false,
         complementoObrigatorioParaTodos: true,
         pularListaAposNovoEndereco: true,
+        // Teste 4: o bloco de fidelidade (com/sem) sai da PDP e vai para a etapa de pagamento do checkout, com o total fixo no rodapé
+        fidelidadeNoPagamento: false,
+      },
+    },
+    t4: {
+      id: 't4',
+      nome: 'Teste 4 - Fidelidade no pagamento',
+      descricao: 'V2 com a escolha de fidelidade na etapa de pagamento (e não na PDP), com o total fixo no rodapé.',
+      oculta: true,
+      flags: {
+        maisDetalhesNoCard: true,
+        pdpV2: true,
+        dadosPessoaisSemRgMae: true,
+        dadosResumoComLabels: true,
+        agendamentoDataPrimeiro: true,
+        pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
+        manterDadosAoAlterarEndereco: false,
+        pdpAntesDoEndereco: false,
+        enderecoUnicoNoModal: false,
+        complementoObrigatorioParaTodos: true,
+        pularListaAposNovoEndereco: false,
+        fidelidadeNoPagamento: true,
       },
     },
   };

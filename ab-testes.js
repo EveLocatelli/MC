@@ -36,5 +36,11 @@
   t3.hipotese = 'Avançar a jornada logo após a inclusão de um novo endereço, excluindo a tela adicional (lista de endereços), reduz o abandono.';
   t3.a = { rotulo: 'Volta à lista de endereços', versao: 'v2', inicio: 'ofertas-fibra.html' };
   t3.b = { rotulo: 'Segue direto para a PDP', versao: 't3', inicio: 'ofertas-fibra.html' };
-  window.AB_TESTES = [t1, t2, t3, teste(4), teste(5)];
+  var t4 = teste(4);
+  t4.nome = 'Teste 4 - Fidelidade no pagamento';
+  t4.descricao = 'Mover o bloco de fidelidade da PDP para a etapa de pagamento';
+  t4.hipotese = 'Mover a escolha com/sem fidelidade para o pagamento (última etapa antes da conclusão), com o total fixo no rodapé, simplifica a PDP.';
+  t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: 'ofertas-fibra.html' };
+  t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: 'ofertas-fibra.html' };
+  window.AB_TESTES = [t1, t2, t3, t4, teste(5)];
 })();

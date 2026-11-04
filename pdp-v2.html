@@ -381,6 +381,13 @@
   const brl = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const moeda = (n) => 'R$ ' + brl(n);
   const fidSwitch = $('fidSwitch');
+  // Teste 4 (flag fidelidadeNoPagamento): a escolha com/sem fidelidade e os benefícios saem da PDP (vão para o pagamento no checkout)
+  if (window.APP_VERSION && window.APP_VERSION.flags.fidelidadeNoPagamento) {
+    $('fidRow').hidden = true;
+    $('fidRow').nextElementSibling.hidden = true; // faixa separadora logo abaixo
+    $('accBtn').hidden = true;
+    $('accBody').hidden = true;
+  }
 
   // ===== Produto =====
   const marcas = (l) => `<div class="marcas">${l.map((m) => `<img src="${m.src}" alt="${m.nome}">`).join('')}</div>`;
