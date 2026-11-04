@@ -437,7 +437,7 @@
 
   renderPagina();
 
-  // ===== "Eu quero" -> spinner de 2s -> tela de seleção de endereço =====
+  // ===== "Eu quero" -> spinner de 1s -> tela de seleção de endereço =====
   // Delegado no container (não nos cards individuais) porque os cards são
   // recriados em runtime pelo renderPagina() acima.
   function showToast(msg) {
@@ -464,7 +464,7 @@
       // Teste 1 (flag pdpAntesDoEndereco): a PDP vem antes da seleção de endereço
       const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpAntesDoEndereco) ? 'pdp-v2.html' : 'selecao-endereco.html';
       window.location.href = destino + '?produto=' + encodeURIComponent(produtoId || '');
-    }, 2000);
+    }, 1000);
   });
 
   // Arrastar com o mouse pra rolar carrosséis horizontais — necessário pra
