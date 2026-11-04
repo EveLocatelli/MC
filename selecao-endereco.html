@@ -974,7 +974,8 @@
     bottomSheetEl.addEventListener('pointercancel', fim);
   })();
   // Endereço recém-adicionado já passou pelo modal (CEP + número + complemento): segue direto ao produto
-  if (novoRaw && enderecoUnicoNoModal) irParaPaginaProduto(novoRaw);
+  // Teste 3 (flag pularListaAposNovoEndereco): o mesmo atalho, sem mudar o restante do fluxo
+  if (novoRaw && (enderecoUnicoNoModal || (window.APP_VERSION && window.APP_VERSION.flags.pularListaAposNovoEndereco))) irParaPaginaProduto(novoRaw);
 
   // O Button Wrapper é fixo (position:absolute) por cima do fim da lista de
   // endereços — sem esse ajuste, o último item fica parcialmente escondido

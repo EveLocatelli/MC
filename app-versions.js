@@ -68,6 +68,8 @@
         enderecoUnicoNoModal: false,
         // Teste 2: complemento obrigatório para todos (a API ainda não diz quais endereços precisam). false = opcional
         complementoObrigatorioParaTodos: true,
+        // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
+        pularListaAposNovoEndereco: false,
       },
     },
     v2: {
@@ -89,6 +91,8 @@
         pdpAntesDoEndereco: false,
         enderecoUnicoNoModal: false,
         complementoObrigatorioParaTodos: true,
+        // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
+        pularListaAposNovoEndereco: false,
       },
     },
     // ---- Versões B dos testes A/B (ficam fora da lista de versões do index; aparecem só em comparar.html) ----
@@ -112,6 +116,8 @@
         enderecoUnicoNoModal: false,
         // Teste 2: complemento obrigatório para todos (a API ainda não diz quais endereços precisam). false = opcional
         complementoObrigatorioParaTodos: true,
+        // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
+        pularListaAposNovoEndereco: false,
       },
     },
     t2: {
@@ -132,6 +138,29 @@
         pdpAntesDoEndereco: false,
         enderecoUnicoNoModal: true,
         complementoObrigatorioParaTodos: true,
+        // Teste 3: depois de adicionar um novo endereço, pula a volta à lista de endereços e segue direto para a PDP
+        pularListaAposNovoEndereco: false,
+      },
+    },
+    t3: {
+      id: 't3',
+      nome: 'Teste 3 - Pular a lista após novo endereço',
+      descricao: 'V2 sem a volta à lista de endereços depois de adicionar um endereço novo.',
+      oculta: true,
+      flags: {
+        maisDetalhesNoCard: true,
+        pdpV2: true,
+        dadosPessoaisSemRgMae: true,
+        dadosResumoComLabels: true,
+        agendamentoDataPrimeiro: true,
+        pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
+        manterDadosAoAlterarEndereco: false,
+        pdpAntesDoEndereco: false,
+        enderecoUnicoNoModal: false,
+        complementoObrigatorioParaTodos: true,
+        pularListaAposNovoEndereco: true,
       },
     },
   };

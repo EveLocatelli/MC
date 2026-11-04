@@ -30,5 +30,11 @@
   t2.hipotese = 'Tratar o endereço em um único modal, no início da jornada, reduz o abandono sem impactar a instalação.';
   t2.a = { rotulo: 'Endereço em várias etapas', versao: 'v2', inicio: 'ofertas-fibra.html' };
   t2.b = { rotulo: 'Endereço em um único modal', versao: 't2', inicio: 'ofertas-fibra.html' };
-  window.AB_TESTES = [t1, t2, teste(3), teste(4), teste(5)];
+  var t3 = teste(3);
+  t3.nome = 'Teste 3 - Avançar após novo endereço';
+  t3.descricao = 'Pula a volta à lista de endereços depois de adicionar um endereço novo';
+  t3.hipotese = 'Avançar a jornada logo após a inclusão de um novo endereço, excluindo a tela adicional (lista de endereços), reduz o abandono.';
+  t3.a = { rotulo: 'Volta à lista de endereços', versao: 'v2', inicio: 'ofertas-fibra.html' };
+  t3.b = { rotulo: 'Segue direto para a PDP', versao: 't3', inicio: 'ofertas-fibra.html' };
+  window.AB_TESTES = [t1, t2, t3, teste(4), teste(5)];
 })();
