@@ -296,7 +296,9 @@
   $('aproveitarBtn').addEventListener('click', () => {
     $('loadingOverlay').hidden = false;
     try { sessionStorage.removeItem('complementosSessao'); sessionStorage.removeItem('enderecosEditados'); } catch (e) {}
-    setTimeout(() => { location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produto.id); }, 2000);
+    // Teste 1 (flag pdpAntesDoEndereco): vai para a PDP, e o endereço vem depois dela
+    const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpAntesDoEndereco) ? 'pdp-v2.html' : 'selecao-endereco.html';
+    setTimeout(() => { location.href = destino + '?produto=' + encodeURIComponent(produto.id); }, 2000);
   });
   // A barra fixa fica por cima do fim da tela: reserva o espaço medindo a altura real
   function ajustar() { $('scrollArea').style.paddingBottom = ($('sheetBar').offsetHeight + 16) + 'px'; }

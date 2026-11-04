@@ -1,3 +1,39 @@
+// ===== Modo "frame" (comparação A/B lado a lado) =====
+// Na tela comparar.html cada celular é um <iframe name="ab:A"> / <iframe name="ab:B">.
+// Como os dois iframes são da mesma origem, eles dividiriam o mesmo sessionStorage (versão escolhida,
+// endereço, complemento...) e o mesmo histórico. Aqui cada frame ganha o seu próprio "espaço":
+//  - as chaves do sessionStorage ganham o prefixo do nome do frame;
+//  - history.back() usa uma pilha de navegação própria do frame (não mexe no outro).
+// Fora da comparação (window.name sem "ab:") nada disso é ativado.
+(function () {
+  var nome = window.name || '';
+  if (nome.indexOf('ab:') !== 0) return;
+  window.APP_FRAME = nome;
+  var prefixo = nome + '|';
+  var P = Storage.prototype;
+  var get = P.getItem, set = P.setItem, rem = P.removeItem;
+  P.getItem = function (k) { return this === window.sessionStorage ? get.call(this, prefixo + k) : get.call(this, k); };
+  P.setItem = function (k, v) { return this === window.sessionStorage ? set.call(this, prefixo + k, v) : set.call(this, k, v); };
+  P.removeItem = function (k) { return this === window.sessionStorage ? rem.call(this, prefixo + k) : rem.call(this, k); };
+
+  // Pilha de páginas visitadas neste frame
+  var CH = '__nav';
+  var pilha = [];
+  try { pilha = JSON.parse(sessionStorage.getItem(CH) || '[]'); } catch (e) {}
+  var aqui = location.pathname.split('/').pop() + location.search;
+  if (pilha[pilha.length - 1] !== aqui) pilha.push(aqui);
+  try { sessionStorage.setItem(CH, JSON.stringify(pilha)); } catch (e) {}
+  History.prototype.back = function () {
+    var p = [];
+    try { p = JSON.parse(sessionStorage.getItem(CH) || '[]'); } catch (e) {}
+    p.pop();
+    var anterior = p[p.length - 1];
+    if (!anterior) return; // primeira tela do frame: não há para onde voltar
+    try { sessionStorage.setItem(CH, JSON.stringify(p)); } catch (e) {}
+    location.href = anterior;
+  };
+})();
+
 // Versões do protótipo. Uma única base de código; cada versão liga/desliga
 // melhorias por "flags". As telas só consultam window.APP_VERSION.flags.
 // Para criar uma nova versão: adicionar um item em VERSOES e usar as flags nas telas.
@@ -26,6 +62,8 @@
         conclusaoV2: false,
         // Modal de cobertura (novo endereço): V1 mostra só "Número: …, CEP: …" como no ar; V2 mostra o endereço completo
         coberturaComEnderecoCompleto: false,
+        // Teste 1: a PDP vem logo depois de escolher a oferta, antes de selecionar o endereço (depois do endereço vai direto aos dados pessoais)
+        pdpAntesDoEndereco: false,
       },
     },
     v2: {
@@ -43,6 +81,27 @@
         pagamentoSemTextoApoio: true,
         conclusaoV2: true,
         coberturaComEnderecoCompleto: true,
+        // Teste 1: a PDP vem logo depois de escolher a oferta, antes de selecionar o endereço (depois do endereço vai direto aos dados pessoais)
+        pdpAntesDoEndereco: false,
+      },
+    },
+    // ---- Versões B dos testes A/B (ficam fora da lista de versões do index; aparecem só em comparar.html) ----
+    t1: {
+      id: 't1',
+      nome: 'Teste 1 - PDP antes do endereço',
+      descricao: 'V2 com a PDP logo após selecionar a oferta, antes do endereço.',
+      oculta: true,
+      flags: {
+        maisDetalhesNoCard: true,
+        pdpV2: true,
+        dadosPessoaisSemRgMae: true,
+        dadosResumoComLabels: true,
+        agendamentoDataPrimeiro: true,
+        pagamentoSemTextoApoio: true,
+        conclusaoV2: true,
+        coberturaComEnderecoCompleto: true,
+        manterDadosAoAlterarEndereco: false,
+        pdpAntesDoEndereco: true,
       },
     },
   };

@@ -461,7 +461,9 @@
     setTimeout(() => {
       // Nova jornada: o complemento informado em tentativas anteriores não vale mais (a tela de complemento volta a ser pedida)
       try { sessionStorage.removeItem('complementosSessao'); sessionStorage.removeItem('enderecosEditados'); } catch (e) {}
-      window.location.href = 'selecao-endereco.html?produto=' + encodeURIComponent(produtoId || '');
+      // Teste 1 (flag pdpAntesDoEndereco): a PDP vem antes da seleção de endereço
+      const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpAntesDoEndereco) ? 'pdp-v2.html' : 'selecao-endereco.html';
+      window.location.href = destino + '?produto=' + encodeURIComponent(produtoId || '');
     }, 2000);
   });
 

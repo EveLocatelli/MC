@@ -779,7 +779,9 @@
   function irParaPaginaProduto(endereco) {
     sessionStorage.setItem('enderecoConfirmado', JSON.stringify(endereco));
     // V2: depois do endereço vem a PDP com fidelidade (pdp-v2); V1: PDP/resumo antigos
-    const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpV2) ? 'pdp-v2.html' : 'produto-detalhe.html';
+    // Teste 1 (pdpAntesDoEndereco): a PDP já foi vista antes do endereço — daqui vai direto aos dados pessoais (checkout)
+    const destino = (window.APP_VERSION && window.APP_VERSION.flags.pdpAntesDoEndereco) ? 'checkout.html'
+      : (window.APP_VERSION && window.APP_VERSION.flags.pdpV2) ? 'pdp-v2.html' : 'produto-detalhe.html';
     window.location.href = destino + '?produto=' + encodeURIComponent(produto.id);
   }
 

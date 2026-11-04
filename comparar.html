@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comparar versões · Protótipo App</title>
+<style>
+  :root{
+    --ink:#1f1d1d;
+    --gray-dark:#525252;
+    --gray-line:#dbdbdb;
+    --red:#da291c;
+    --red-dark:#a81d12;
+    --bg-page:#f8f8f8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg-page);color:var(--ink);}
+  header{
+    background:linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+    color:#fff;padding:20px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;
+  }
+  header a.voltar{color:#fff;text-decoration:none;font-size:14px;opacity:.9;white-space:nowrap;}
+  header a.voltar:hover{opacity:1;text-decoration:underline;}
+  header .txt{flex:1;min-width:240px;}
+  header h1{margin:0 0 2px;font-size:20px;}
+  header p{margin:0;font-size:14px;opacity:.9;}
+  header button{
+    background:#fff;color:var(--red);border:none;border-radius:999px;padding:10px 18px;
+    font-size:14px;font-weight:600;cursor:pointer;
+  }
+  header button:hover{filter:brightness(.95);}
+
+  .palco{display:flex;justify-content:center;align-items:flex-start;gap:48px;padding:24px;}
+  .lado{display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .cab{width:100%;display:flex;align-items:center;gap:12px;}
+  .cab .chip{
+    background:var(--ink);color:#fff;font-weight:700;font-size:13px;border-radius:8px;padding:4px 10px;flex-shrink:0;
+  }
+  .cab .info{flex:1;min-width:0;}
+  .cab .rotulo{margin:0;font-size:15px;font-weight:600;}
+  .cab .versao{margin:0;font-size:13px;color:var(--gray-dark);}
+  .cab{flex-wrap:wrap;min-height:84px;align-content:flex-start;}
+  .cab .info{flex:1 1 140px;}
+  .cab .acoes{margin-left:44px;}
+  .cab .acoes{display:flex;gap:8px;flex-shrink:0;}
+  .cab .acoes button,.cab .acoes a{
+    border:1px solid var(--gray-line);background:#fff;color:var(--ink);border-radius:999px;padding:6px 12px;
+    font-size:12px;font-weight:500;text-decoration:none;cursor:pointer;white-space:nowrap;
+  }
+  .cab .acoes button:hover,.cab .acoes a:hover{border-color:var(--red);color:var(--red);}
+
+  /* Moldura de celular: o app roda dentro de um iframe de 420x844 e a escala se ajusta à tela */
+  .caixa{position:relative;}
+  .celular{
+    width:420px;height:844px;border-radius:32px;overflow:hidden;background:#fff;
+    box-shadow:0 24px 60px rgba(0,0,0,0.18);transform-origin:top left;
+  }
+  .celular iframe{width:100%;height:100%;border:0;display:block;}
+
+  /* Seletor A/B (só no celular/tela estreita) */
+  .abas{display:none;}
+  @media (max-width:899px){
+    header{padding:16px;}
+    .palco{padding:0;gap:0;display:block;}
+    .abas{display:flex;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid var(--gray-line);position:sticky;top:0;z-index:5;}
+    .abas button{
+      flex:1;border:1px solid var(--gray-line);background:#fff;border-radius:999px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink);
+    }
+    .abas button.on{background:var(--red);border-color:var(--red);color:#fff;}
+    .lado{display:none;align-items:stretch;gap:0;}
+    .lado.on{display:flex;}
+    .cab{padding:12px 16px;min-height:0;}
+    .cab .acoes{margin-left:0;}
+    .caixa{width:100% !important;height:calc(100dvh - 190px) !important;}
+    .celular{width:100% !important;height:100% !important;border-radius:0;box-shadow:none;transform:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="voltar" href="index.html">← Todos os testes</a>
+  <div class="txt">
+    <h1 id="titulo"></h1>
+    <p id="descricao"></p>
+  </div>
+  <button type="button" id="reiniciarTudo">Reiniciar os dois</button>
+</header>
+
+<div class="abas" id="abas">
+  <button type="button" data-lado="A" class="on">A</button>
+  <button type="button" data-lado="B">B</button>
+</div>
+
+<div class="palco" id="palco"></div>
+
+<script src="app-versions.js"></script>
+<script src="ab-testes.js"></script>
+<script>
+  var params = new URLSearchParams(location.search);
+  var teste = (window.AB_TESTES || []).filter(function (t) { return String(t.id) === params.get('teste'); })[0] || window.AB_TESTES[0];
+  document.title = teste.nome + ' · Comparar versões';
+  document.getElementById('titulo').textContent = teste.nome;
+  document.getElementById('descricao').textContent = teste.descricao + (teste.hipotese ? ' — ' + teste.hipotese : '');
+
+  // Cada lado vira um iframe com nome "ab:<teste>:<lado>" — o app-versions.js usa esse nome para
+  // separar o estado (sessionStorage e histórico) de um frame e do outro.
+  function nomeFrame(lado) { return 'ab:' + teste.id + ':' + lado; }
+  function urlInicio(l) {
+    var base = l.inicio || 'ofertas-fibra.html';
+    return base + (base.indexOf('?') < 0 ? '?' : '&') + 'v=' + encodeURIComponent(l.versao);
+  }
+  function limparEstado(lado) {
+    var pref = nomeFrame(lado) + '|';
+    var apagar = [];
+    for (var i = 0; i < sessionStorage.length; i++) {
+      var k = sessionStorage.key(i);
+      if (k && k.indexOf(pref) === 0) apagar.push(k);
+    }
+    apagar.forEach(function (k) { sessionStorage.removeItem(k); });
+  }
+  function reiniciar(lado) {
+    limparEstado(lado);
+    var f = document.getElementById('frame' + lado);
+    var l = lado === 'A' ? teste.a : teste.b;
+    f.contentWindow.location.replace(urlInicio(l));
+  }
+
+  var palco = document.getElementById('palco');
+  [['A', teste.a], ['B', teste.b]].forEach(function (par) {
+    var lado = par[0], l = par[1];
+    limparEstado(lado); // cada abertura da comparação começa do zero
+    var v = (window.APP_VERSOES && window.APP_VERSOES[l.versao]) || { nome: l.versao };
+    var el = document.createElement('div');
+    el.className = 'lado' + (lado === 'A' ? ' on' : '');
+    el.dataset.lado = lado;
+    el.innerHTML =
+      '<div class="cab"><span class="chip"></span><div class="info"><p class="rotulo"></p><p class="versao"></p></div>'
+      + '<div class="acoes"><button type="button" class="rei">Reiniciar</button><a class="nova" target="_blank" rel="noopener">Nova aba</a></div></div>'
+      + '<div class="caixa"><div class="celular"><iframe id="frame' + lado + '" name="' + nomeFrame(lado) + '" title="Versão ' + lado + '"></iframe></div></div>';
+    el.querySelector('.chip').textContent = lado;
+    el.querySelector('.rotulo').textContent = l.rotulo;
+    el.querySelector('.versao').textContent = v.nome;
+    el.querySelector('.rei').addEventListener('click', function () { reiniciar(lado); });
+    el.querySelector('.nova').href = urlInicio(l);
+    el.querySelector('iframe').src = urlInicio(l);
+    palco.appendChild(el);
+  });
+  document.getElementById('reiniciarTudo').addEventListener('click', function () { reiniciar('A'); reiniciar('B'); });
+
+  // Abas A/B (tela estreita: um frame por vez, sem moldura)
+  document.getElementById('abas').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#abas button').forEach(function (x) { x.classList.toggle('on', x === b); });
+    document.querySelectorAll('.lado').forEach(function (x) { x.classList.toggle('on', x.dataset.lado === b.dataset.lado); });
+  });
+
+  // Escala os celulares para caber na janela (largura e altura) quando a tela é grande
+  function ajustar() {
+    var caixas = document.querySelectorAll('.caixa');
+    if (window.innerWidth < 900) { caixas.forEach(function (c) { c.style.width = c.style.height = ''; c.firstChild.style.transform = ''; }); return; }
+    var topo = document.querySelector('header').offsetHeight + 24 + 60 + 24; // cabeçalho + respiros + linha do rótulo
+    var s = Math.min(1, (window.innerHeight - topo) / 844, (window.innerWidth - 48 - 48) / (420 * 2));
+    s = Math.max(s, 0.4);
+    caixas.forEach(function (c) {
+      c.style.width = (420 * s) + 'px';
+      c.style.height = (844 * s) + 'px';
+      c.firstChild.style.transform = 'scale(' + s + ')';
+    });
+    document.querySelectorAll('.cab').forEach(function (c) { c.style.width = Math.max(420 * s, 300) + 'px'; });
+  }
+  window.addEventListener('resize', ajustar);
+  ajustar();
+</script>
+
+</body>
+</html>

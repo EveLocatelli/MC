@@ -66,6 +66,8 @@
   .versao .nome{font-size:16px;font-weight:600;margin:0 0 4px;}
   .versao .desc{margin:0;font-size:14px;color:var(--gray-dark);}
   .versao .arrow{color:var(--red);font-size:18px;flex-shrink:0;}
+  .ajuda{margin:-8px 0 16px;font-size:14px;color:var(--gray-dark);}
+  .teste .lados{margin:8px 0 0;font-size:13px;color:var(--gray-dark);}
   .opcoes{display:flex;align-items:center;gap:8px;margin:0 0 40px;font-size:14px;color:var(--gray-dark);}
   .opcoes input{accent-color:var(--red);width:16px;height:16px;}
 </style>
@@ -81,15 +83,21 @@
   <p class="section-label">Escolha a versão para iniciar a jornada</p>
   <div class="versoes" id="versoes"></div>
   <label class="opcoes"><input type="checkbox" id="mostrarSelo"> Mostrar selo da versão nas telas</label>
+
+  <p class="section-label">Testes A/B — comparar lado a lado</p>
+  <p class="ajuda">Cada teste abre dois celulares independentes, um ao lado do outro, para navegar e comparar as versões ao mesmo tempo.</p>
+  <div class="versoes" id="testes"></div>
 </div>
 
 <script src="app-versions.js"></script>
+<script src="ab-testes.js"></script>
 <script>
   // Cada versão é um link que abre a jornada em uma nova aba; o ?v= define a versão nessa aba
   // (a escolha fica guardada na sessão da própria aba, lida em app-versions.js).
   var box = document.getElementById('versoes');
   Object.keys(window.APP_VERSOES).forEach(function (id) {
     var v = window.APP_VERSOES[id];
+    if (v.oculta) return; // versões B dos testes só aparecem na comparação
     var link = document.createElement('a');
     link.className = 'versao';
     link.href = 'ofertas-fibra.html?v=' + encodeURIComponent(id);
@@ -99,6 +107,21 @@
     link.querySelector('.nome').textContent = v.nome;
     link.querySelector('.desc').textContent = v.descricao;
     box.appendChild(link);
+  });
+  // Testes A/B: cada cartão abre comparar.html (dois frames independentes) em nova aba
+  var caixaTestes = document.getElementById('testes');
+  (window.AB_TESTES || []).forEach(function (t) {
+    var nomeV = function (id) { return (window.APP_VERSOES[id] || { nome: id }).nome; };
+    var link = document.createElement('a');
+    link.className = 'versao teste';
+    link.href = 'comparar.html?teste=' + encodeURIComponent(t.id);
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.innerHTML = '<div><p class="nome"></p><p class="desc"></p><p class="lados"></p></div><span class="arrow" aria-hidden="true">→</span>';
+    link.querySelector('.nome').textContent = t.nome;
+    link.querySelector('.desc').textContent = t.descricao;
+    link.querySelector('.lados').textContent = 'A: ' + t.a.rotulo + ' (' + nomeV(t.a.versao) + ')  ·  B: ' + t.b.rotulo + ' (' + nomeV(t.b.versao) + ')';
+    caixaTestes.appendChild(link);
   });
   var selo = document.getElementById('mostrarSelo');
   try { selo.checked = localStorage.getItem('appMostrarSelo') !== '0'; } catch (e) { selo.checked = true; }
