@@ -41,10 +41,10 @@
   t4.nome = 'Teste 4 - Fidelidade no pagamento';
   t4.descricao = 'Mover o bloco de fidelidade da PDP para a etapa de pagamento';
   t4.hipotese = 'Mover a escolha com/sem fidelidade para o pagamento (última etapa antes da conclusão), com o total e o Continuar logo depois do bloco de fidelidade, simplifica a PDP.';
-  // Este teste começa direto na etapa de pagamento do checkout (para apresentar sem refazer a jornada)
-  var pagamento = 'checkout.html?produto=fibra-1gb&etapa=pagamento';
-  t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: pagamento };
-  t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: pagamento };
+  // Lado A começa do início da jornada (a fidelidade fica na PDP, não no pagamento);
+  // lado B começa direto na etapa de pagamento do checkout (onde está a mudança)
+  t4.a = { rotulo: 'Fidelidade na PDP', versao: 'v2', inicio: 'ofertas-fibra.html' };
+  t4.b = { rotulo: 'Fidelidade no pagamento', versao: 't4', inicio: 'checkout.html?produto=fibra-1gb&etapa=pagamento' };
   var t5 = teste(5);
   t5.nome = 'Teste 5 - Mais datas no agendamento';
   t5.descricao = 'Botão "Ver mais datas" na etapa de agendamento (mais 10 datas)';
